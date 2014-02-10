@@ -202,6 +202,7 @@ install-static: $(STATICLIB)
 uninstall:
 	@rm -f $(DESTDIR)$(PREFIX)/bin/$(BIN)
 	@rm -rf $(DESTDIR)$(MOD_PATH)
+	@rm -rf $(DESTDIR)$(SHARE_PATH)
 
 .PHONY: clean
 clean:

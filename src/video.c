@@ -223,7 +223,7 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 	lock_write_get(vtx->lock);
 
 	/* Convert image */
-	if (frame->fmt != VID_FMT_YUV420P) {
+/*	if (frame->fmt != VID_FMT_YUV420P) {
 
 		vtx->vsrc_size = frame->size;
 
@@ -238,7 +238,7 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 		vidconv(vtx->frame, frame, 0);
 		frame = vtx->frame;
 	}
-
+*/
 	/* Process video frame through all Video Filters */
 	for (le = vtx->filtl.head; le; le = le->next) {
 

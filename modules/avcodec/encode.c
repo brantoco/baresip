@@ -8,7 +8,9 @@
 #include <baresip.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/mem.h>
-#ifdef USE_X264
+#if defined(USE_GST_VIDEO)
+#include "gst_video.h"
+#elif defined(USE_X264)
 #include <x264.h>
 #endif
 #include "h26x.h"
@@ -54,7 +56,11 @@ struct videnc_state {
 		} h264;
 	} u;
 
-#ifdef USE_X264
+#if defined(USE_GST_VIDEO)
+	gst_video_t *gst_video;
+	videnc_packet_h *pkth;
+	void *pkth_arg;
+#elif defined(USE_X264)
 	x264_t *x264;
 #endif
 };
@@ -67,7 +73,10 @@ static void destructor(void *arg)
 	mem_deref(st->mb);
 	mem_deref(st->mb_frag);
 
-#ifdef USE_X264
+#if defined(USE_GST_VIDEO)
+	if (st->gst_video)
+		gst_video_free(st->gst_video);
+#elif defined(USE_X264)
 	if (st->x264)
 		x264_encoder_close(st->x264);
 #endif
@@ -250,7 +259,6 @@ int decode_sdpparam_h264(struct videnc_state *st, const struct pl *name,
 	return 0;
 }
 
-
 static void param_handler(const struct pl *name, const struct pl *val,
 			  void *arg)
 {
@@ -331,7 +339,187 @@ static int h263_packetize(struct videnc_state *st, struct mbuf *mb,
 }
 
 
-#ifdef USE_X264
+
+int encode_update(struct videnc_state **vesp, const struct vidcodec *vc,
+		  struct videnc_param *prm, const char *fmtp)
+{
+	struct videnc_state *st;
+	int err = 0;
+
+	if (!vesp || !vc || !prm)
+		return EINVAL;
+
+	if (*vesp)
+		return 0;
+
+	st = mem_zalloc(sizeof(*st), destructor);
+	if (!st)
+		return ENOMEM;
+
+	st->encprm = *prm;
+
+	st->codec_id = avcodec_resolve_codecid(vc->name);
+	if (st->codec_id == CODEC_ID_NONE) {
+		err = EINVAL;
+		goto out;
+	}
+
+	st->mb  = mbuf_alloc(FF_MIN_BUFFER_SIZE * 20);
+	st->mb_frag = mbuf_alloc(1024);
+	if (!st->mb || !st->mb_frag) {
+		err = ENOMEM;
+		goto out;
+	}
+
+	st->sz_max = st->mb->size;
+
+	if (st->codec_id == CODEC_ID_H264) {
+#if !defined(USE_X264) && !defined(USE_GST_VIDEO)
+		err = init_encoder(st);
+#endif
+	}
+	else
+		err = init_encoder(st);
+	if (err) {
+		warning("avcodec: %s: could not init encoder\n", vc->name);
+		goto out;
+	}
+
+	if (str_isset(fmtp)) {
+		struct pl sdp_fmtp;
+
+		pl_set_str(&sdp_fmtp, fmtp);
+
+		fmt_param_apply(&sdp_fmtp, param_handler, st);
+	}
+
+	debug("avcodec: video encoder %s: %d fps, %d bit/s, pktsize=%u\n",
+	      vc->name, prm->fps, prm->bitrate, prm->pktsize);
+
+ out:
+	if (err)
+		mem_deref(st);
+	else
+		*vesp = st;
+
+	return err;
+}
+
+
+#if defined(USE_GST_VIDEO)
+static void gst_pull_callback(void *dst, int size, void *arg)
+{
+	struct videnc_state *st = arg;
+
+	mbuf_reset(st->mb);
+	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
+
+	/* TODO: Return error codes... somehow. */
+	switch (st->codec_id) {
+
+	case CODEC_ID_H263:
+		h263_packetize(st, st->mb, st->pkth, st->pkth_arg);
+		break;
+
+	case CODEC_ID_H264:
+		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg);
+		break;
+
+	case CODEC_ID_MPEG4:
+		general_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg);
+		break;
+
+	default:
+		/* err = EPROTO; */
+		break;
+	}
+
+}
+
+int encode_gst(struct videnc_state *st, bool update, const struct vidframe *frame,
+		videnc_packet_h *pkth, void *arg)
+{
+	int err;
+
+	unsigned char *data;
+	int size;
+
+	int width;
+	int height;
+	int fps;
+	int bitrate;
+
+	if (!st || !frame || !pkth)
+		return EINVAL;
+
+	width = frame->size.w;
+	height = frame->size.h;
+	fps = st->encprm.fps;
+	bitrate = st->encprm.bitrate;
+
+	if (!st->gst_video || !vidsz_cmp(&st->encsize, &frame->size))
+	{
+		/* If caps was changed. */
+		if (st->gst_video) {
+			gst_video_free(st->gst_video);
+			st->gst_video = NULL;
+		}
+
+		st->gst_video = gst_video_alloc(width, height, fps, bitrate);
+
+		if (!st->gst_video) {
+			warning("gst_video codec: gst_video_alloc failed\n");
+			return ENOMEM;
+		}
+
+		st->pkth = pkth;
+		st->pkth_arg = arg;
+
+		err = gst_video_set_pull_callback(st->gst_video, gst_pull_callback, (void *)st);
+		if (err) {
+			return err;
+		}
+
+		/* To detect if requested size was changed. */
+		st->encsize = frame->size;
+	}
+
+	if (update) {
+		debug("avcodec: gstreamer picture update, it's not implemented...\n");
+	}
+
+#if 0
+	/* I420 (YUV420P): hardcoded. */
+	size = frame->linesize[0] * height + frame->linesize[1] * height * 0.5 + frame->linesize[2] * height * 0.5;
+
+	data = malloc(size);
+
+	size = 0;
+
+	memcpy(&data[size], frame->data[0], frame->linesize[0] * height);
+	size += frame->linesize[0] * height;
+
+	memcpy(&data[size], frame->data[1], frame->linesize[1] * height * 0.5);
+	size += frame->linesize[1] * height * 0.5;
+
+	memcpy(&data[size], frame->data[2], frame->linesize[2] * height * 0.5);
+	size += frame->linesize[2] * height * 0.5;
+#endif
+
+#if 1
+	/* UYVY: hardcoded. */
+	size = width * height * 2;
+
+	data = malloc(size);
+
+	memcpy(&data[0], frame->data[0], size);
+#endif
+
+	return gst_video_push(st->gst_video, data, size);
+}
+
+#elif defined(USE_X264)
+
 static int open_encoder_x264(struct videnc_state *st, struct videnc_param *prm,
 			     const struct vidsz *size)
 {
@@ -404,76 +592,7 @@ static int open_encoder_x264(struct videnc_state *st, struct videnc_param *prm,
 
 	return 0;
 }
-#endif
 
-
-int encode_update(struct videnc_state **vesp, const struct vidcodec *vc,
-		  struct videnc_param *prm, const char *fmtp)
-{
-	struct videnc_state *st;
-	int err = 0;
-
-	if (!vesp || !vc || !prm)
-		return EINVAL;
-
-	if (*vesp)
-		return 0;
-
-	st = mem_zalloc(sizeof(*st), destructor);
-	if (!st)
-		return ENOMEM;
-
-	st->encprm = *prm;
-
-	st->codec_id = avcodec_resolve_codecid(vc->name);
-	if (st->codec_id == CODEC_ID_NONE) {
-		err = EINVAL;
-		goto out;
-	}
-
-	st->mb  = mbuf_alloc(FF_MIN_BUFFER_SIZE * 20);
-	st->mb_frag = mbuf_alloc(1024);
-	if (!st->mb || !st->mb_frag) {
-		err = ENOMEM;
-		goto out;
-	}
-
-	st->sz_max = st->mb->size;
-
-	if (st->codec_id == CODEC_ID_H264) {
-#ifndef USE_X264
-		err = init_encoder(st);
-#endif
-	}
-	else
-		err = init_encoder(st);
-	if (err) {
-		warning("avcodec: %s: could not init encoder\n", vc->name);
-		goto out;
-	}
-
-	if (str_isset(fmtp)) {
-		struct pl sdp_fmtp;
-
-		pl_set_str(&sdp_fmtp, fmtp);
-
-		fmt_param_apply(&sdp_fmtp, param_handler, st);
-	}
-
-	debug("avcodec: video encoder %s: %d fps, %d bit/s, pktsize=%u\n",
-	      vc->name, prm->fps, prm->bitrate, prm->pktsize);
-
- out:
-	if (err)
-		mem_deref(st);
-	else
-		*vesp = st;
-
-	return err;
-}
-
-
-#ifdef USE_X264
 int encode_x264(struct videnc_state *st, bool update,
 		const struct vidframe *frame,
 		videnc_packet_h *pkth, void *arg)
@@ -547,7 +666,6 @@ int encode_x264(struct videnc_state *st, bool update,
 	return err;
 }
 #endif
-
 
 int encode(struct videnc_state *st, bool update, const struct vidframe *frame,
 	   videnc_packet_h *pkth, void *arg)

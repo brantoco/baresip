@@ -210,7 +210,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name)
 	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	fmt.fmt.pix.width       = st->app_sz.w;
 	fmt.fmt.pix.height      = st->app_sz.h;
-	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
 	fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
 	if (-1 == xioctl(st->fd, VIDIOC_S_FMT, &fmt)) {
@@ -257,8 +257,8 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name)
 
 	pix = (char *)&fmt.fmt.pix.pixelformat;
 
-	if (V4L2_PIX_FMT_YUV420 != fmt.fmt.pix.pixelformat) {
-		warning("v4l2: %s: expected YUV420 got %c%c%c%c\n", dev_name,
+	if (V4L2_PIX_FMT_UYVY != fmt.fmt.pix.pixelformat) {
+		warning("v4l2: %s: expected UYVY got %c%c%c%c\n", dev_name,
 			pix[0], pix[1], pix[2], pix[3]);
 		return ENODEV;
 	}
@@ -357,7 +357,7 @@ static void call_frame_handler(struct vidsrc_st *st, uint8_t *buf)
 {
 	struct vidframe frame;
 
-	vidframe_init_buf(&frame, VID_FMT_YUV420P, &st->sz, buf);
+	vidframe_init_buf(&frame, VID_FMT_UYVY422, &st->sz, buf);
 
 	st->frameh(&frame, st->arg);
 }

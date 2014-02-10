@@ -100,7 +100,9 @@ static struct vidcodec h264 = {
 	.name      = "H264",
 	.variant   = "packetization-mode=0",
 	.encupdh   = encode_update,
-#ifdef USE_X264
+#if defined(USE_GST_VIDEO)
+	.ench      = encode_gst,
+#elif defined(USE_X264)
 	.ench      = encode_x264,
 #else
 	.ench      = encode,
@@ -133,10 +135,12 @@ static struct vidcodec mpg4 = {
 
 static int module_init(void)
 {
-#ifdef USE_X264
-	debug("avcodec: x264 build %d\n", X264_BUILD);
+#if defined(USE_GST_VIDEO)
+	info("avcodec: gstreamer\n");
+#elif defined(USE_X264)
+	info("avcodec: x264 build %d\n", X264_BUILD);
 #else
-	debug("avcodec: using FFmpeg H.264 encoder\n");
+	info("avcodec: using FFmpeg H.264 encoder\n");
 #endif
 
 #if LIBAVCODEC_VERSION_INT < ((53<<16)+(10<<8)+0)

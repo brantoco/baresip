@@ -28,6 +28,11 @@ int encode_x264(struct videnc_state *st, bool update,
 		const struct vidframe *frame,
 		videnc_packet_h *pkth, void *arg);
 #endif
+#ifdef USE_GST_VIDEO
+int encode_gst(struct videnc_state *st, bool update,
+	      const struct vidframe *frame,
+	      videnc_packet_h *pkth, void *arg);
+#endif
 
 
 /*

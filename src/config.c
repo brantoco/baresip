@@ -52,7 +52,7 @@ static struct config core_config = {
 	{
 		"", "",
 		"", "",
-		352, 288,
+		320, 240,
 		512000,
 		25,
 	},
@@ -346,7 +346,7 @@ static const char *default_video_device(void)
 #ifdef DARWIN
 	return "qtcapture,nil";
 #else
-	return "v4l2,/dev/video0";
+	return "v4l2,/dev/video4";
 #endif
 }
 
@@ -412,7 +412,7 @@ static int core_config_template(struct re_printf *pf, const struct config *cfg)
 #ifdef USE_VIDEO
 	err |= re_hprintf(pf,
 			  "\n# Video\n"
-			  "#video_source\t\t%s\n"
+			  "video_source\t\t%s\n"
 			  "#video_display\t\t%s\n"
 			  "video_size\t\t%dx%d\n"
 			  "video_bitrate\t\t%u\n"
@@ -597,6 +597,7 @@ int config_write_template(const char *file, const struct config *cfg)
 #else
 	(void)re_fprintf(f, "#module\t\t\t" MOD_PRE "avcodec" MOD_EXT "\n");
 #endif
+	(void)re_fprintf(f, "module\t\t\t" MOD_PRE "snapshot2" MOD_EXT "\n");
 	(void)re_fprintf(f, "#module\t\t\t" MOD_PRE "vpx" MOD_EXT "\n");
 
 	(void)re_fprintf(f, "\n# Video filter Modules (in encoding order)\n");
@@ -607,7 +608,7 @@ int config_write_template(const char *file, const struct config *cfg)
 	(void)re_fprintf(f, "module\t\t\t" MOD_PRE "qtcapture" MOD_EXT "\n");
 #else
 	(void)re_fprintf(f, "#module\t\t\t" MOD_PRE "v4l" MOD_EXT "\n");
-	(void)re_fprintf(f, "#module\t\t\t" MOD_PRE "v4l2" MOD_EXT "\n");
+	(void)re_fprintf(f, "module\t\t\t" MOD_PRE "v4l2" MOD_EXT "\n");
 #endif
 #ifdef USE_FFMPEG
 	(void)re_fprintf(f, "#module\t\t\t" MOD_PRE "avformat" MOD_EXT "\n");
@@ -662,6 +663,7 @@ int config_write_template(const char *file, const struct config *cfg)
 #ifdef USE_VIDEO
 	(void)re_fprintf(f, "module_app\t\t" MOD_PRE "vidloop"MOD_EXT"\n");
 #endif
+	(void)re_fprintf(f, "module_app\t\t" MOD_PRE "server"MOD_EXT"\n");
 	(void)re_fprintf(f, "\n");
 
 	(void)re_fprintf(f, "\n#------------------------------------"

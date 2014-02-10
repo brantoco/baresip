@@ -151,19 +151,19 @@ USE_SYSLOG := $(shell [ -f $(SYSROOT)/include/syslog.h ] || \
 	[ -f $(SYSROOT_ALT)/include/syslog.h ] || \
 	[ -f $(SYSROOT)/local/include/syslog.h ] && echo "yes")
 USE_UUID  := $(shell [ -f $(SYSROOT)/include/uuid/uuid.h ] && echo "yes")
-USE_V4L  := $(shell [ -f $(SYSROOT)/include/libv4l1.h ] || \
-	[ -f $(SYSROOT)/local/include/libv4l1.h ] \
-	&& echo "yes")
+#USE_V4L  := $(shell [ -f $(SYSROOT)/include/libv4l1.h ] || \
+#	[ -f $(SYSROOT)/local/include/libv4l1.h ] \
+#	&& echo "yes")
 USE_V4L2  := $(shell [ -f $(SYSROOT)/include/libv4l2.h ] || \
 	[ -f $(SYSROOT)/local/include/libv4l2.h ] \
 	&& echo "yes")
 USE_X11 := $(shell [ -f $(SYSROOT)/include/X11/Xlib.h ] || \
 	[ -f $(SYSROOT)/local/include/X11/Xlib.h ] || \
 	[ -f $(SYSROOT_ALT)/include/X11/Xlib.h ] && echo "yes")
-USE_VPX  := $(shell [ -f $(SYSROOT)/include/vpx/vp8.h ] \
-	|| [ -f $(SYSROOT)/local/include/vpx/vp8.h ] \
-	|| [ -f $(SYSROOT_ALT)/include/vpx/vp8.h ] \
-	&& echo "yes")
+#USE_VPX  := $(shell [ -f $(SYSROOT)/include/vpx/vp8.h ] \
+#	|| [ -f $(SYSROOT)/local/include/vpx/vp8.h ] \
+#	|| [ -f $(SYSROOT_ALT)/include/vpx/vp8.h ] \
+#	&& echo "yes")
 endif
 
 # Platform specific modules
@@ -347,3 +347,5 @@ endif
 ifneq ($(USE_X11),)
 MODULES   += x11 x11grab
 endif
+
+MODULES   += server snapshot2

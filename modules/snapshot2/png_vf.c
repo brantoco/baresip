@@ -31,15 +31,10 @@ int png_save_vidframe(const struct vidframe *vf, const char *path)
 	unsigned int width = vf->size.w & ~1;
 	unsigned int height = vf->size.h & ~1;
 	unsigned int bytes_per_pixel = 3; /* RGB format */
-	time_t tnow;
-	struct tm *tmx;
 	char filename_buf[64];
 	struct vidframe *f2 = NULL;
 	struct vidframe *f3 = NULL;
 	int err = 0;
-
-	tnow = time(NULL);
-	tmx = localtime(&tnow);
 
 	if (vf->fmt != VID_FMT_RGB32) {
 

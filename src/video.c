@@ -244,8 +244,11 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 
 		struct vidfilt_enc_st *st = le->data;
 
-		if (st->vf && st->vf->ench)
-			err |= st->vf->ench(st, frame);
+		if (st->vf && st->vf->ench) {
+			if (strcmp(st->vf->name, "vidrec") != 0) {
+				err |= st->vf->ench(st, frame);
+			}
+		}
 	}
 
  unlock:

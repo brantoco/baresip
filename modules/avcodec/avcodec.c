@@ -12,6 +12,7 @@
 #endif
 #include "h26x.h"
 #include "avcodec.h"
+#include "vidrec.h"
 
 
 int avcodec_resolve_codecid(const char *s)
@@ -158,6 +159,8 @@ static int module_init(void)
 	if (avcodec_find_decoder(CODEC_ID_MPEG4))
 		vidcodec_register(&mpg4);
 
+	vidrec_init();
+
 	return 0;
 }
 
@@ -167,6 +170,8 @@ static int module_close(void)
 	vidcodec_unregister(&mpg4);
 	vidcodec_unregister(&h263);
 	vidcodec_unregister(&h264);
+
+	vidrec_deinit();
 
 	return 0;
 }

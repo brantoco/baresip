@@ -15,6 +15,7 @@
 #endif
 #include "h26x.h"
 #include "avcodec.h"
+#include "vidrec.h"
 
 
 enum {
@@ -413,6 +414,9 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 
 	mbuf_reset(st->mb);
 	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
+
+	/* Write video file. */
+	vidrec_encode(dst, size);
 
 	/* TODO: Return error codes... somehow. */
 	switch (st->codec_id) {

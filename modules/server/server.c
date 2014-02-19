@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -32,10 +33,20 @@ static void on_command(const char* command)
 {
 	if (strstr(command, "photo") == command) {
 		struct re_printf pf;
-		pf.arg = strstr(command, " ") + 1;
+		pf.arg = strstr(command, " ");
+		if (pf.arg && strlen(pf.arg)) {
+			pf.arg += 1;
+		}
 		cmd_process(NULL, 'o', &pf);
 	} else if (strstr(command, "video-start") == command) {
+		struct re_printf pf;
+		pf.arg = strstr(command, " ");
+		if (pf.arg && strlen(pf.arg)) {
+			pf.arg += 1;
+		}
+		cmd_process(NULL, 'z', &pf);
 	} else if (strstr(command, "video-stop") == command) {
+		cmd_process(NULL, 'Z', NULL);
 	}
 }
 
@@ -121,6 +132,8 @@ static void *server_thread(void *arg)
     int i;
     struct sockaddr_in clientname;
     size_t size;
+
+    (void)arg;
 
     /* Create the socket and set it up to accept connections. */
     sock = make_socket (PORT);

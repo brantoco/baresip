@@ -11,8 +11,8 @@ USE_X264 := $(shell [ -f $(SYSROOT)/include/x264.h ] || \
 USE_GST_VIDEO := $(shell [ "$(USE_GST)" = "yes" ] && echo "yes")
 
 MOD		:= avcodec
-$(MOD)_SRCS	+= avcodec.c h263.c h264.c encode.c decode.c vidrec.c
-$(MOD)_LFLAGS	+= -lavcodec -lavutil
+$(MOD)_SRCS	+= avcodec.c h263.c h264.c encode.c decode.c vidrec.c vidcont.c
+$(MOD)_LFLAGS	+= -lavcodec -lavutil -lavformat
 CFLAGS          += -I/usr/include/ffmpeg
 ifneq ($(USE_GST_VIDEO),)
 $(MOD)_SRCS	+= gst_video.c

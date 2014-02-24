@@ -77,6 +77,9 @@ static void destructor(void *arg)
 #if defined(USE_GST_VIDEO)
 	if (st->gst_video)
 		gst_video_free(st->gst_video);
+
+	vidrec_deinit();
+
 #elif defined(USE_X264)
 	if (st->x264)
 		x264_encoder_close(st->x264);
@@ -416,7 +419,7 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
 
 	/* Write video file. */
-	vidrec_encode(dst, size);
+	vidrec_write(dst, size);
 
 	/* TODO: Return error codes... somehow. */
 	switch (st->codec_id) {
@@ -486,6 +489,8 @@ int encode_gst(struct videnc_state *st, bool update, const struct vidframe *fram
 
 		/* To detect if requested size was changed. */
 		st->encsize = frame->size;
+
+		vidrec_init(width, height, fps, bitrate, CODEC_ID_H264);
 	}
 
 	if (update) {

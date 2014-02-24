@@ -35,14 +35,14 @@ static void on_command(const char* command)
 		struct re_printf pf;
 		pf.arg = strstr(command, " ");
 		if (pf.arg && strlen(pf.arg)) {
-			pf.arg += 1;
+			pf.arg = ((char *)pf.arg) + 1;
 		}
 		cmd_process(NULL, 'o', &pf);
 	} else if (strstr(command, "video-start") == command) {
 		struct re_printf pf;
 		pf.arg = strstr(command, " ");
 		if (pf.arg && strlen(pf.arg)) {
-			pf.arg += 1;
+			pf.arg = ((char *)pf.arg) + 1;
 		}
 		cmd_process(NULL, 'z', &pf);
 	} else if (strstr(command, "video-stop") == command) {

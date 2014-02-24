@@ -4,7 +4,6 @@
  * Copyright (C) 2014 Fadeev Alexander
  */
 
-int vidrec_encode(const char *src, size_t size);
-int vidrec_init(void);
-int vidrec_deinit(void);
-
+void vidrec_init(int width, int height, int framerate, int bitrate, enum CodecID codec_id);
+void vidrec_deinit(void);
+int vidrec_write(void *src, size_t size);

@@ -1,4 +1,7 @@
 #include <libavformat/avformat.h>
+#include <libavformat/avio.h>
+#include <libavutil/common.h>
+#include <sys/time.h>
 #include "vidcont.h"
 #include "re.h"
 #include "rem.h"
@@ -11,6 +14,7 @@
 struct vidcont_int_t {
 	AVFormatContext *av;
 	AVStream *st;
+	int64_t start_time;
 };
 
 
@@ -40,18 +44,8 @@ static AVStream *internal_add_video_stream(AVFormatContext *oc, int width, int h
 	   identically 1. */
 	c->time_base.den = framerate;
 	c->time_base.num = 1;
-	c->gop_size = 12; /* emit one intra frame every twelve frames at most */
+	c->gop_size = 0; /* emit one intra frame every twelve frames at most */
 	c->pix_fmt = STREAM_PIX_FMT;
-	if (c->codec_id == CODEC_ID_MPEG2VIDEO) {
-		/* just for testing, we also add B frames */
-		c->max_b_frames = 2;
-	}
-	if (c->codec_id == CODEC_ID_MPEG1VIDEO){
-		/* Needed to avoid using macroblocks in which some coeffs overflow.
-		   This does not happen with normal video, it just happens here as
-		   the motion of the chroma plane does not match the luma plane. */
-		c->mb_decision=2;
-	}
 	// some formats want stream headers to be separate
 	if(oc->oformat->flags & AVFMT_GLOBALHEADER) {
 		c->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -142,6 +136,9 @@ void vidcont_free(vidcont_t *ctx)
 
 	av_write_trailer(int_ctx->av);
 
+	// Only this line flushes file to disk. avio_flush doesn't work.
+	avio_close(int_ctx->av->pb);
+
 	av_free(int_ctx->av);
 	mem_deref(int_ctx);
 }
@@ -149,14 +146,22 @@ void vidcont_free(vidcont_t *ctx)
 int vidcont_write(vidcont_t *ctx, void *buf, int size)
 {
 	AVPacket pkt;
+	int64_t now;
 
 	struct vidcont_int_t *int_ctx = (struct vidcont_int_t *)ctx;
+
+	now = av_gettime();
+
+	if (!int_ctx->start_time) {
+		int_ctx->start_time = now;
+	}
 
 	av_init_packet(&pkt);
 
 	pkt.stream_index = int_ctx->st->index;
 	pkt.data = buf;
 	pkt.size = size;
+	pkt.pts = av_rescale_q((now - int_ctx->start_time), (AVRational){1, 1000000}, int_ctx->st->time_base);
 
 	/* write the compressed frame in the media file */
 	return av_interleaved_write_frame(int_ctx->av, &pkt);

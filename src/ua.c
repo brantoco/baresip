@@ -223,6 +223,25 @@ static const char *translate_errorcode(uint16_t scode)
 }
 
 
+static void ua_hangup_other_calls(struct ua *ua, struct call *call, const char *str)
+{
+	struct le *le;
+	info("Incoming early call from %s, currently have %d calls\n", str, list_count(&ua->calls));
+
+	for (le = ua->calls.tail; le; le = le->prev) {
+		struct call *old_call = le->data;
+		if (old_call != call) {
+			struct le *old_le = le;
+			/* There MUST be a better way. */
+			le = le->prev;
+			list_unlink(old_le);
+			ua_hangup(ua, old_call, 486, "Another call incoming");
+			if (le) continue; else break;
+		}
+	}
+}
+
+
 static void call_event_handler(struct call *call, enum call_event ev,
 			       const char *str, void *arg)
 {
@@ -243,9 +262,13 @@ static void call_event_handler(struct call *call, enum call_event ev,
 	case CALL_EVENT_INCOMING:
 		switch (ua->acc->answermode) {
 
-		case ANSWERMODE_EARLY:
+		case ANSWERMODE_EARLY: {
+			/* TODO: if (some_policy) { ... */
+			ua_hangup_other_calls(ua, call, str);
+
 			(void)call_progress(call);
 			break;
+        }
 
 		case ANSWERMODE_AUTO:
 			(void)call_answer(call, 200);

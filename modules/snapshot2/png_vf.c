@@ -142,13 +142,13 @@ int png_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	if (vf->fmt != VID_FMT_RGB32) {
 
 		if (vidframe_alloc(&f2, VID_FMT_YUV420P, &vf->size)) {
-			goto out;
+			goto frame_out;
 		}
 
 		vidconv(f2, vf, NULL);
 
 		if (vidframe_alloc(&f3, VID_FMT_RGB32, &f2->size)) {
-			goto out;
+			goto frame_out;
 		}
 
 		vidconv(f3, f2, NULL);
@@ -159,18 +159,18 @@ int png_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	png_save(vf, path);
 
 	if (!f2) {
-		error("RGB->RGB vidconv is not implemented!\n");
-		goto out;
+		error("Snapshot2: RGB->RGB vidconv is not implemented!\n");
+		goto frame_out;
 	}
 
 	if (!preview_path) {
-		warning("Preview path is not set\n");
-		goto out;
+		warning("Snapshot2: Preview path is not set\n");
+		goto frame_out;
 	}
 
 	/* Create preview frame. */
 	if (vidframe_alloc(&preview_frame, VID_FMT_RGB32, &preview_size)) {
-		goto out;
+		goto frame_out;
 	}
 
 	/* Crop source image. */
@@ -181,7 +181,7 @@ int png_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 
 	png_save(preview_frame, preview_path);
 
- out:
+ frame_out:
 	/* Finish writing. */
 	mem_deref(f2);
 	mem_deref(f3);

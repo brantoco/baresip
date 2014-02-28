@@ -3,4 +3,4 @@
  */
 
 
-int png_save_vidframe(const struct vidframe *vf, const char *path);
+int png_save_vidframe(const struct vidframe *vf, const char *path, const char *preview_path);

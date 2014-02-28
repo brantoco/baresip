@@ -11,7 +11,8 @@
 
 
 static bool flag_enc;
-static char *filename;
+static char *image_path;
+static char *preview_path;
 
 
 static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
@@ -22,9 +23,9 @@ static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 		return 0;
 
 	if (flag_enc) {
-		debug("%s\n", filename);
+		debug("Snapshot: %s, %s\n", image_path, preview_path);
 		flag_enc = false;
-		png_save_vidframe(frame, filename);
+		png_save_vidframe(frame, image_path, preview_path);
 	}
 
 	return 0;
@@ -39,8 +40,8 @@ static int cmd_snapshot(struct re_printf *pf, void *arg)
 		return EINVAL;
 	}
 
-	/* NOTE: not re-entrant */
-	filename = (char *)pf->arg;
+	image_path = strtok((char *)pf->arg, " ");
+	preview_path = strtok(NULL, " ");
 	flag_enc = true;
 
 	return 0;

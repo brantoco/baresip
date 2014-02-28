@@ -15,10 +15,22 @@
 
 
 static void png_save_free(png_structp png_ptr, png_byte **png_row_pointers,
-			  int png_height);
+			  int png_height)
+{
+	int y;
+
+	/* Cleanup. */
+	if (png_height == 0 || png_row_pointers == NULL)
+		return;
+
+	for (y = 0; y < png_height; y++) {
+		png_free(png_ptr, png_row_pointers[y]);
+	}
+	png_free(png_ptr, png_row_pointers);
+}
 
 
-int png_save_vidframe(const struct vidframe *vf, const char *path)
+static int png_save(const struct vidframe *vf, const char *path)
 {
 	png_byte **png_row_pointers = NULL;
 	png_byte *row;
@@ -31,27 +43,7 @@ int png_save_vidframe(const struct vidframe *vf, const char *path)
 	unsigned int width = vf->size.w & ~1;
 	unsigned int height = vf->size.h & ~1;
 	unsigned int bytes_per_pixel = 3; /* RGB format */
-	char filename_buf[64];
-	struct vidframe *f2 = NULL;
-	struct vidframe *f3 = NULL;
 	int err = 0;
-
-	if (vf->fmt != VID_FMT_RGB32) {
-
-		err = vidframe_alloc(&f2, VID_FMT_YUV420P, &vf->size);
-		if (err)
-			goto out;
-
-		vidconv(f2, vf, NULL);
-
-		err = vidframe_alloc(&f3, VID_FMT_RGB32, &f2->size);
-		if (err)
-			goto out;
-
-		vidconv(f3, f2, NULL);
-
-		vf = f3;
-	}
 
 	/* Initialize the write struct. */
 	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
@@ -128,32 +120,72 @@ int png_save_vidframe(const struct vidframe *vf, const char *path)
 	png_set_rows(png_ptr, info_ptr, png_row_pointers);
 	png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
 
-	info("png: wrote %s\n", filename_buf);
-
  out:
 	/* Finish writing. */
-	mem_deref(f2);
-	mem_deref(f3);
 	png_save_free(png_ptr, png_row_pointers, height);
 	png_destroy_write_struct(&png_ptr, &info_ptr);
 	if (fp)
 		fclose(fp);
 
-	return 0;
+	return err;
 }
 
 
-static void png_save_free(png_structp png_ptr, png_byte **png_row_pointers,
-			  int png_height)
+int png_save_vidframe(const struct vidframe *vf, const char *path, const char *preview_path)
 {
-	int y;
+	struct vidframe *f2 = NULL;
+	struct vidframe *f3 = NULL;
+	struct vidframe *preview_frame = NULL;
+	struct vidsz preview_size = {128, 128};
 
-	/* Cleanup. */
-	if (png_height == 0 || png_row_pointers == NULL)
-		return;
+	/* Convert video frame UYVY -> RGB. */
+	if (vf->fmt != VID_FMT_RGB32) {
 
-	for (y = 0; y < png_height; y++) {
-		png_free(png_ptr, png_row_pointers[y]);
+		if (vidframe_alloc(&f2, VID_FMT_YUV420P, &vf->size)) {
+			goto out;
+		}
+
+		vidconv(f2, vf, NULL);
+
+		if (vidframe_alloc(&f3, VID_FMT_RGB32, &f2->size)) {
+			goto out;
+		}
+
+		vidconv(f3, f2, NULL);
+
+		vf = f3;
 	}
-	png_free(png_ptr, png_row_pointers);
+
+	png_save(vf, path);
+
+	if (!f2) {
+		error("RGB->RGB vidconv is not implemented!\n");
+		goto out;
+	}
+
+	if (!preview_path) {
+		warning("Preview path is not set\n");
+		goto out;
+	}
+
+	/* Create preview frame. */
+	if (vidframe_alloc(&preview_frame, VID_FMT_RGB32, &preview_size)) {
+		goto out;
+	}
+
+	/* Crop source image. */
+	f2->size.w = (unsigned)min((double)f2->size.w, (double)f2->size.h);
+	f2->size.h = f2->size.w;
+
+	vidconv(preview_frame, f2, NULL);
+
+	png_save(preview_frame, preview_path);
+
+ out:
+	/* Finish writing. */
+	mem_deref(f2);
+	mem_deref(f3);
+	mem_deref(preview_frame);
+
+	return 0;
 }

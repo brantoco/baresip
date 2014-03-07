@@ -348,4 +348,8 @@ ifneq ($(USE_X11),)
 MODULES   += x11 x11grab
 endif
 
+ifeq ($(OS),linux)
+MODULES   += dtmfio
+endif
+
 MODULES   += server snapshot2

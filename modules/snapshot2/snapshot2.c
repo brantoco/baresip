@@ -40,8 +40,8 @@ static int cmd_snapshot(struct re_printf *pf, void *arg)
 		return EINVAL;
 	}
 
-	image_path = strtok((char *)pf->arg, " ");
-	preview_path = strtok(NULL, " ");
+	image_path = strtok((char *)pf->arg, " \r\n");
+	preview_path = strtok(NULL, " \r\n");
 
 	if (!image_path) {
 		image_path = (char *)pf->arg;

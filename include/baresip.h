@@ -171,6 +171,9 @@ struct config {
 		uint32_t bitrate;       /**< Encoder bitrate in [bit/s]     */
 		uint32_t fps;           /**< Video framerate                */
 	} video;
+
+#define VID_FMT_INTERNAL VID_FMT_YUV420P
+
 #endif
 
 	/** Audio/Video Transport */

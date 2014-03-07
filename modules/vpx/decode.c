@@ -263,7 +263,7 @@ int vp8_decode(struct viddec_state *vds, struct vidframe *frame,
 
 	frame->size.w = img->d_w;
 	frame->size.h = img->d_h;
-	frame->fmt    = VID_FMT_YUV420P;
+	frame->fmt    = VID_FMT_INTERNAL;
 
  out:
 	mbuf_rewind(vds->mb);

@@ -352,12 +352,12 @@ ifeq ($(OS),linux)
 MODULES   += dtmfio
 endif
 
-ifneq ($(TARGET_BRANTO), )
+ifneq ($(TARGET_BRANTO),)
 MODULES   += server snapshot2
 CFLAGS    += -DTARGET_BRANTO
 endif
 
-ifneq ($(TARGET_BRANTO_BALL), )
+ifneq ($(TARGET_BRANTO_BALL),)
 MODULES   += server snapshot2
 CFLAGS    += -DTARGET_BRANTO_BALL
 endif

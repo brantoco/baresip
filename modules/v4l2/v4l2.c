@@ -161,6 +161,34 @@ static int init_mmap(struct vidsrc_st *st, const char *dev_name)
 }
 
 
+static uint32_t vidfmt_to_v4l2pixfmt(enum vidfmt fmt)
+{
+	switch (fmt) {
+		case VID_FMT_YUV420P:
+			return V4L2_PIX_FMT_YUV420;
+		case VID_FMT_YUYV422:
+			return V4L2_PIX_FMT_YUYV;
+		case VID_FMT_UYVY422:
+			return V4L2_PIX_FMT_UYVY;
+		case VID_FMT_RGB32:
+			return V4L2_PIX_FMT_RGB32;
+		case VID_FMT_ARGB:
+			return V4L2_PIX_FMT_BGR32;
+		case VID_FMT_RGB565:
+			return V4L2_PIX_FMT_RGB565;
+		case VID_FMT_RGB555:
+			return V4L2_PIX_FMT_RGB555;
+		case VID_FMT_NV12:
+			return V4L2_PIX_FMT_NV12;
+		case VID_FMT_NV21:
+			return V4L2_PIX_FMT_NV21;
+		default:
+			warning("v4l2: bad video format id: %d\n", fmt);
+			return -1;
+	}
+}
+
+
 static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name)
 {
 	struct v4l2_capability cap;
@@ -210,7 +238,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name)
 	fmt.type		= V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	fmt.fmt.pix.width       = st->app_sz.w;
 	fmt.fmt.pix.height      = st->app_sz.h;
-	fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
+	fmt.fmt.pix.pixelformat = vidfmt_to_v4l2pixfmt(VID_FMT_INTERNAL);
 	fmt.fmt.pix.field       = V4L2_FIELD_INTERLACED;
 
 	if (-1 == xioctl(st->fd, VIDIOC_S_FMT, &fmt)) {
@@ -257,7 +285,7 @@ static int v4l2_init_device(struct vidsrc_st *st, const char *dev_name)
 
 	pix = (char *)&fmt.fmt.pix.pixelformat;
 
-	if (V4L2_PIX_FMT_YUV420 != fmt.fmt.pix.pixelformat) {
+	if (vidfmt_to_v4l2pixfmt(VID_FMT_INTERNAL) != fmt.fmt.pix.pixelformat) {
 		warning("v4l2: %s: expected YUV420 got %c%c%c%c\n", dev_name,
 			pix[0], pix[1], pix[2], pix[3]);
 		return ENODEV;
@@ -357,7 +385,7 @@ static void call_frame_handler(struct vidsrc_st *st, uint8_t *buf)
 {
 	struct vidframe frame;
 
-	vidframe_init_buf(&frame, VID_FMT_YUV420P, &st->sz, buf);
+	vidframe_init_buf(&frame, VID_FMT_INTERNAL, &st->sz, buf);
 
 	st->frameh(&frame, st->arg);
 }

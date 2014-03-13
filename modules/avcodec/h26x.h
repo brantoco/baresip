@@ -146,6 +146,7 @@ struct h264_hdr {
 	unsigned type:5;   /**< 5 bits - nal_unit_type                  */
 };
 
+int h264_hdr_decode_byte(struct h264_hdr *hdr, uint8_t v);
 int h264_hdr_encode(const struct h264_hdr *hdr, struct mbuf *mb);
 int h264_hdr_decode(struct h264_hdr *hdr, struct mbuf *mb);
 

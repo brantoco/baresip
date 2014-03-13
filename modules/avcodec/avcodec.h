@@ -56,7 +56,8 @@ int decode_h263_test(struct viddec_state *st, struct vidframe *frame,
 int decode_sdpparam_h264(struct videnc_state *st, const struct pl *name,
 			 const struct pl *val);
 int h264_packetize(struct mbuf *mb, size_t pktsize,
-		   videnc_packet_h *pkth, void *arg);
+		   videnc_packet_h *pkth, void *arg,
+		   struct mbuf *sps, struct mbuf *pps);
 int h264_decode(struct viddec_state *st, struct mbuf *src);
 int h264_nal_send(bool first, bool last,
 		  bool marker, uint32_t ihdr, const uint8_t *buf,

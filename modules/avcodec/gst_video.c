@@ -171,7 +171,7 @@ static void internal_appsink_new_buffer(GstElement *sink, struct gst_video_state
  *  '--------'   '-----------'   '----------'
  * </pre>
  */
-gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate)
+gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, void (*f)(void *dst, int size, void *arg), void *arg)
 {
 	GstElement *source, *sink;
 	GstBus *bus;
@@ -273,6 +273,10 @@ gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate)
 		goto out;
 	}
 
+	/* Set callback to context. */
+	st->pull = f;
+	st->arg = arg;
+
 out:
 	if (err) {
 		gst_video_free((gst_video_t *)st);
@@ -352,18 +356,4 @@ int gst_video_push(gst_video_t *ctx, const void *src, int size)
 	}
 
 	return ret;
-}
-
-int gst_video_set_pull_callback(gst_video_t *ctx, void (*f)(void *dst, int size, void *arg), void *arg)
-{
-	struct gst_video_state *st = (struct gst_video_state *)ctx;
-
-	if (!st) {
-		return EINVAL;
-	}
-
-	st->pull = f;
-	st->arg = arg;
-
-	return 0;
 }

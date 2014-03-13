@@ -18,6 +18,16 @@
 const uint8_t h264_level_idc = 0x0c;
 
 
+int h264_hdr_decode_byte(struct h264_hdr *hdr, uint8_t v)
+{
+	hdr->f    = v>>7 & 0x1;
+	hdr->nri  = v>>5 & 0x3;
+	hdr->type = v>>0 & 0x1f;
+
+	return 0;
+}
+
+
 int h264_hdr_encode(const struct h264_hdr *hdr, struct mbuf *mb)
 {
 	uint8_t v;
@@ -37,11 +47,7 @@ int h264_hdr_decode(struct h264_hdr *hdr, struct mbuf *mb)
 
 	v = mbuf_read_u8(mb);
 
-	hdr->f    = v>>7 & 0x1;
-	hdr->nri  = v>>5 & 0x3;
-	hdr->type = v>>0 & 0x1f;
-
-	return 0;
+	return h264_hdr_decode_byte(hdr, v);
 }
 
 
@@ -160,7 +166,8 @@ int h264_nal_send(bool first, bool last,
 
 
 int h264_packetize(struct mbuf *mb, size_t pktsize,
-		   videnc_packet_h *pkth, void *arg)
+		   videnc_packet_h *pkth, void *arg,
+		   struct mbuf *sps, struct mbuf *pps)
 {
 	const uint8_t *start = mb->buf;
 	const uint8_t *end   = start + mb->end;
@@ -170,6 +177,7 @@ int h264_packetize(struct mbuf *mb, size_t pktsize,
 	r = h264_find_startcode(mb->buf, end);
 
 	while (r < end) {
+		struct h264_hdr hdr;
 		const uint8_t *r1;
 
 		/* skip zeros */
@@ -177,6 +185,24 @@ int h264_packetize(struct mbuf *mb, size_t pktsize,
 			;
 
 		r1 = h264_find_startcode(r, end);
+
+		err |= h264_hdr_decode_byte(&hdr, r[0]);
+
+		/* Save SPS/PPS nal units. */
+		switch (hdr.type) {
+		case H264_NAL_PPS:
+			if (pps) {
+				mbuf_reset(pps);
+				mbuf_write_mem(pps, r, r1 - r);
+			}
+			break;
+		case H264_NAL_SPS:
+			if (sps) {
+				mbuf_reset(sps);
+				mbuf_write_mem(sps, r, r1 - r);
+			}
+			break;
+		}
 
 		err |= h264_nal_send(true, true, (r1 >= end), r[0],
 				     r+1, r1-r-1, pktsize,

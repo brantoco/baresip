@@ -13,19 +13,61 @@
 #include "vidcont.h"
 
 
-static pthread_mutex_t flock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t int_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static int int_initialized = 0;
+
+static int int_width;
+static int int_height;
+static int int_framerate;
+static int int_bitrate;
+static enum CodecID int_codec_id;
+static struct mbuf *int_sps;
+static struct mbuf *int_pps;
 
 static vidcont_t *f;
-static int f_width;
-static int f_height;
-static int f_framerate;
-static int f_bitrate;
-static enum CodecID f_codec_id;
+
+
+static void internal_video_start(const char *path)
+{
+	pthread_mutex_lock(&int_lock);
+
+	if (!f) {
+		f = vidcont_alloc(path, int_width, int_height, int_framerate, int_bitrate, int_codec_id, int_sps, int_pps);
+	}
+
+	pthread_mutex_unlock(&int_lock);
+}
+
+
+static void internal_video_stop(void)
+{
+	pthread_mutex_lock(&int_lock);
+
+	if (f) {
+		vidcont_free(f);
+		f = NULL;
+	}
+
+	pthread_mutex_unlock(&int_lock);
+}
+
+
+static void internal_video_write(void *src, size_t size)
+{
+	pthread_mutex_lock(&int_lock);
+
+	if (f) {
+		vidcont_video_write(f, src, size);
+	}
+
+	pthread_mutex_unlock(&int_lock);
+}
 
 
 static int cmd_video_start(struct re_printf *pf, void *arg)
 {
-	char *path = (char *)pf->arg;
+	char *path;
 
 	(void)arg;
 
@@ -33,17 +75,13 @@ static int cmd_video_start(struct re_printf *pf, void *arg)
 		return EINVAL;
 	}
 
-	pthread_mutex_lock(&flock);
+	path = strtok((char *)pf->arg, " \r\n");
 
-	if (f) {
-		pthread_mutex_unlock(&flock);
-		return 0;
+	if (!path) {
+		path = (char *)pf->arg;
 	}
 
-	
-	f = vidcont_alloc(path, f_width, f_height, f_framerate, f_bitrate, f_codec_id);
-
-	pthread_mutex_unlock(&flock);
+	internal_video_start(path);
 
 	debug("Start video recording: %s\n", path);
 
@@ -56,14 +94,7 @@ static int cmd_video_stop(struct re_printf *pf, void *arg)
 	(void)pf;
 	(void)arg;
 
-	pthread_mutex_lock(&flock);
-
-	if (f) {
-		vidcont_free(f);
-		f = NULL;
-	}
-
-	pthread_mutex_unlock(&flock);
+	internal_video_stop();
 
 	debug("Stop video recording...\n");
 
@@ -77,35 +108,49 @@ static const struct cmd cmdv[] = {
 };
 
 
-void vidrec_init(int width, int height, int framerate, int bitrate, enum CodecID codec_id)
+void vidrec_init_once(int width, int height, int framerate, int bitrate, enum CodecID codec_id, struct mbuf *sps, struct mbuf *pps)
 {
-	f_width = width;
-	f_height = height;
-	f_framerate = framerate;
-	f_bitrate = bitrate;
-	f_codec_id = codec_id;
+	if (int_initialized) {
+		return;
+	}
+
+	int_width = width;
+	int_height = height;
+	int_framerate = framerate;
+	int_bitrate = bitrate;
+	int_codec_id = codec_id;
+	int_sps = sps;
+	int_pps = pps;
 
 	cmd_register(cmdv, ARRAY_SIZE(cmdv));
+
+	int_initialized = 1;
+
+	debug("Video recording is initialized\n");
 }
 
 
 void vidrec_deinit(void)
 {
 	cmd_unregister(cmdv);
+
+	internal_video_stop();
+
+	int_initialized = 0;
+
+	debug("Video recording is deinitialized.\n");
 }
 
-int vidrec_write(void *src, size_t size)
+
+void vidrec_video_write(void *src, size_t size)
 {
-	if (!src)
-		return 0;
-
-	pthread_mutex_lock(&flock);
-
-	if (f) {
-		vidcont_write(f, src, size);
+	if (!int_initialized) {
+		return;
 	}
 
-	pthread_mutex_unlock(&flock);
+	if (!src) {
+		return;
+	}
 
-	return 0;
+	internal_video_write(src, size);
 }

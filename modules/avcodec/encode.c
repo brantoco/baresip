@@ -61,6 +61,12 @@ struct videnc_state {
 	gst_video_t *gst_video;
 	videnc_packet_h *pkth;
 	void *pkth_arg;
+	int width;
+	int height;
+	int fps;
+	int bitrate;
+	struct mbuf *sps;
+	struct mbuf *pps;
 #elif defined(USE_X264)
 	x264_t *x264;
 #endif
@@ -75,9 +81,9 @@ static void destructor(void *arg)
 	mem_deref(st->mb_frag);
 
 #if defined(USE_GST_VIDEO)
-	if (st->gst_video)
-		gst_video_free(st->gst_video);
-
+	gst_video_free(st->gst_video);
+	mem_deref(st->sps);
+	mem_deref(st->pps);
 	vidrec_deinit();
 
 #elif defined(USE_X264)
@@ -418,9 +424,6 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 	mbuf_reset(st->mb);
 	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
 
-	/* Write video file. */
-	vidrec_write(dst, size);
-
 	/* TODO: Return error codes... somehow. */
 	switch (st->codec_id) {
 
@@ -429,7 +432,10 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 		break;
 
 	case CODEC_ID_H264:
-		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg);
+		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg, st->sps, st->pps);
+		if (st->sps->end && st->pps->end) {
+			vidrec_init_once(st->width, st->height, st->fps, st->bitrate, CODEC_ID_H264, st->sps, st->pps);
+		}
 		break;
 
 	case CODEC_ID_MPEG4:
@@ -441,56 +447,50 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 		break;
 	}
 
+	/* Write video file. */
+	vidrec_video_write(dst, size);
 }
 
 int encode_gst(struct videnc_state *st, bool update, const struct vidframe *frame,
 		videnc_packet_h *pkth, void *arg)
 {
-	int err;
-
 	unsigned char *data;
 	int size;
-
-	int width;
-	int height;
-	int fps;
-	int bitrate;
 
 	if (!st || !frame || !pkth)
 		return EINVAL;
 
-	width = frame->size.w;
-	height = frame->size.h;
-	fps = st->encprm.fps;
-	bitrate = st->encprm.bitrate;
-
 	if (!st->gst_video || !vidsz_cmp(&st->encsize, &frame->size))
 	{
+		int width = frame->size.w;
+		int height = frame->size.h;
+		int fps = st->encprm.fps;
+		int bitrate = st->encprm.bitrate;
+
 		/* If caps was changed. */
 		if (st->gst_video) {
 			gst_video_free(st->gst_video);
 			st->gst_video = NULL;
 		}
 
-		st->gst_video = gst_video_alloc(width, height, fps, bitrate);
+		st->gst_video = gst_video_alloc(width, height, fps, bitrate, gst_pull_callback, (void *)st);
 
 		if (!st->gst_video) {
 			warning("gst_video codec: gst_video_alloc failed\n");
 			return ENOMEM;
 		}
 
+		st->width = width;
+		st->height = height;
+		st->fps = fps;
+		st->bitrate = bitrate;
 		st->pkth = pkth;
 		st->pkth_arg = arg;
-
-		err = gst_video_set_pull_callback(st->gst_video, gst_pull_callback, (void *)st);
-		if (err) {
-			return err;
-		}
+		st->sps = mbuf_alloc(20);
+		st->pps = mbuf_alloc(20);
 
 		/* To detect if requested size was changed. */
 		st->encsize = frame->size;
-
-		vidrec_init(width, height, fps, bitrate, CODEC_ID_H264);
 	}
 
 	if (update) {
@@ -499,25 +499,25 @@ int encode_gst(struct videnc_state *st, bool update, const struct vidframe *fram
 
 #if 0
 	/* I420 (YUV420P): hardcoded. */
-	size = frame->linesize[0] * height + frame->linesize[1] * height * 0.5 + frame->linesize[2] * height * 0.5;
+	size = frame->linesize[0] * st->height + frame->linesize[1] * st->height * 0.5 + frame->linesize[2] * st->height * 0.5;
 
 	data = malloc(size);
 
 	size = 0;
 
-	memcpy(&data[size], frame->data[0], frame->linesize[0] * height);
-	size += frame->linesize[0] * height;
+	memcpy(&data[size], frame->data[0], frame->linesize[0] * st->height);
+	size += frame->linesize[0] * st->height;
 
-	memcpy(&data[size], frame->data[1], frame->linesize[1] * height * 0.5);
-	size += frame->linesize[1] * height * 0.5;
+	memcpy(&data[size], frame->data[1], frame->linesize[1] * st->height * 0.5);
+	size += frame->linesize[1] * st->height * 0.5;
 
-	memcpy(&data[size], frame->data[2], frame->linesize[2] * height * 0.5);
-	size += frame->linesize[2] * height * 0.5;
+	memcpy(&data[size], frame->data[2], frame->linesize[2] * st->height * 0.5);
+	size += frame->linesize[2] * st->height * 0.5;
 #endif
 
 #if 1
 	/* UYVY: hardcoded. */
-	size = width * height * 2;
+	size = st->width * st->height * 2;
 
 	data = malloc(size);
 
@@ -757,7 +757,7 @@ int encode(struct videnc_state *st, bool update, const struct vidframe *frame,
 		break;
 
 	case CODEC_ID_H264:
-		err = h264_packetize(st->mb, st->encprm.pktsize, pkth, arg);
+		err = h264_packetize(st->mb, st->encprm.pktsize, pkth, arg, NULL, NULL);
 		break;
 
 	case CODEC_ID_MPEG4:

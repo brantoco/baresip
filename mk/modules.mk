@@ -354,10 +354,12 @@ endif
 
 ifneq ($(TARGET_BRANTO),)
 MODULES   += server snapshot2
-CFLAGS    += -DTARGET_BRANTO
+CFLAGS    += -DTARGET_BRANTO -DUSE_GST_VIDEO
+USE_GST   = yes
 endif
 
 ifneq ($(TARGET_BRANTO_BALL),)
 MODULES   += server snapshot2
-CFLAGS    += -DTARGET_BRANTO_BALL
+CFLAGS    += -DTARGET_BRANTO_BALL -DUSE_GST_VIDEO
+USE_GST   = yes
 endif

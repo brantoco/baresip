@@ -175,7 +175,7 @@ struct config {
 #ifndef TARGET_BRANTO_BALL
 #define VID_FMT_INTERNAL VID_FMT_YUV420P
 #else
-#define VID_FMT_INTERNAL V4L2_PIX_FMT_UYVY
+#define VID_FMT_INTERNAL VID_FMT_UYVY422
 #endif
 
 #endif

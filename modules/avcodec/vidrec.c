@@ -119,8 +119,8 @@ void vidrec_init_once(int width, int height, int framerate, int bitrate, enum Co
 	int_framerate = framerate;
 	int_bitrate = bitrate;
 	int_codec_id = codec_id;
-	int_sps = sps;
-	int_pps = pps;
+	int_sps = mbuf_alloc_ref(sps);
+	int_pps = mbuf_alloc_ref(pps);
 
 	cmd_register(cmdv, ARRAY_SIZE(cmdv));
 
@@ -135,6 +135,9 @@ void vidrec_deinit(void)
 	cmd_unregister(cmdv);
 
 	internal_video_stop();
+
+	mem_deref(int_sps);
+	mem_deref(int_pps);
 
 	int_initialized = 0;
 

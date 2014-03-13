@@ -433,8 +433,17 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 
 	case CODEC_ID_H264:
 		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg, st->sps, st->pps);
+
 		if (st->sps->end && st->pps->end) {
+			/*
+			 * SPS/PPS is coming with FIRST frame from gstreamer codec. Only after that we initialize video recording.
+			 * So, theoretically, we have a moment, when user can't record a video, but actually video recording is enabled
+			 * at time when first frame will arrive to a client.
+			 */
 			vidrec_init_once(st->width, st->height, st->fps, st->bitrate, CODEC_ID_H264, st->sps, st->pps);
+
+			mbuf_reset(st->sps);
+			mbuf_reset(st->pps);
 		}
 		break;
 
@@ -447,7 +456,7 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 		break;
 	}
 
-	/* Write video file. */
+	/* Send frame to video recording subsystem. */
 	vidrec_video_write(dst, size);
 }
 

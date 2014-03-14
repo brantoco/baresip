@@ -77,19 +77,17 @@ static void destructor(void *arg)
 {
 	struct videnc_state *st = arg;
 
-	mem_deref(st->mb);
-	mem_deref(st->mb_frag);
-
 #if defined(USE_GST_VIDEO)
 	gst_video_free(st->gst_video);
+	vidrec_deinit();
 	mem_deref(st->sps);
 	mem_deref(st->pps);
-	vidrec_deinit();
-
 #elif defined(USE_X264)
 	if (st->x264)
 		x264_encoder_close(st->x264);
 #endif
+	mem_deref(st->mb);
+	mem_deref(st->mb_frag);
 
 	if (st->ctx) {
 		if (st->ctx->codec)
@@ -421,7 +419,7 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 {
 	struct videnc_state *st = arg;
 
-	mbuf_reset(st->mb);
+	mbuf_rewind(st->mb);
 	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
 
 	/* TODO: Return error codes... somehow. */
@@ -442,8 +440,8 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 			 */
 			vidrec_init_once(st->width, st->height, st->fps, st->bitrate, CODEC_ID_H264, st->sps, st->pps);
 
-			mbuf_reset(st->sps);
-			mbuf_reset(st->pps);
+			mbuf_rewind(st->sps);
+			mbuf_rewind(st->pps);
 		}
 		break;
 

@@ -180,7 +180,7 @@ static int encode_pip(struct vidfilt_enc_st *st, struct vidframe *frame)
 			sz.h = frame->size.h / 5;
 		}
 
-		err = vidframe_alloc(&selfview->frame, VID_FMT_YUV420P, &sz);
+		err = vidframe_alloc(&selfview->frame, VID_FMT_INTERNAL, &sz);
 	}
 	if (!err)
 		vidconv(selfview->frame, frame, NULL);

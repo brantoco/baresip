@@ -151,7 +151,7 @@ static void handle_packet(struct vidsrc_st *st, AVPacket *pkt)
 	}
 
 	vf.size = st->app_sz;
-	vf.fmt  = VID_FMT_YUV420P;
+	vf.fmt  = VID_FMT_INTERNAL;
 	for (i=0; i<4; i++) {
 		vf.data[i]     = pict.data[i];
 		vf.linesize[i] = pict.linesize[i];

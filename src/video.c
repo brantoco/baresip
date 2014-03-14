@@ -223,13 +223,13 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 	lock_write_get(vtx->lock);
 
 	/* Convert image */
-/*	if (frame->fmt != VID_FMT_YUV420P) {
+	if (frame->fmt != VID_FMT_INTERNAL) {
 
 		vtx->vsrc_size = frame->size;
 
 		if (!vtx->frame) {
 
-			err = vidframe_alloc(&vtx->frame, VID_FMT_YUV420P,
+			err = vidframe_alloc(&vtx->frame, VID_FMT_INTERNAL,
 					     &vtx->vsrc_size);
 			if (err)
 				goto unlock;
@@ -238,7 +238,7 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 		vidconv(vtx->frame, frame, 0);
 		frame = vtx->frame;
 	}
-*/
+
 	/* Process video frame through all Video Filters */
 	for (le = vtx->filtl.head; le; le = le->next) {
 
@@ -680,7 +680,7 @@ static int set_encoder_format(struct vtx *vtx, const char *src,
 	}
 
 	vtx->mute_frame = mem_deref(vtx->mute_frame);
-	err = vidframe_alloc(&vtx->mute_frame, VID_FMT_YUV420P, size);
+	err = vidframe_alloc(&vtx->mute_frame, VID_FMT_INTERNAL, size);
 	if (err)
 		return err;
 

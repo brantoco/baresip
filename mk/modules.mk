@@ -352,4 +352,10 @@ ifeq ($(OS),linux)
 MODULES   += dtmfio
 endif
 
+# Branto-specific modules
 MODULES   += server snapshot2
+
+ifneq ($(TARGET_BRANTO_BALL),)
+CFLAGS    += -DTARGET_BRANTO_BALL -DUSE_GST_VIDEO
+USE_GST   = yes
+endif

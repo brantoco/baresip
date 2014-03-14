@@ -191,16 +191,15 @@ gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, 
 	DEBUG_NOTICE("init: %s\n", version);
 	g_free(version);
 
-#if 0
+#ifndef TARGET_BRANTO_BALL
 	snprintf(pipeline, sizeof(pipeline), "appsrc name=source is-live=TRUE block=TRUE do-timestamp=TRUE ! "
 	                                     "videoparse width=%d height=%d format=i420 framerate=%d/1 ! "
 	                                     "x264enc byte-stream=TRUE rc-lookahead=0 sync-lookahead=0 bitrate=%d ! "
 	                                     "appsink name=sink emit-signals=TRUE drop=TRUE", width, height, framerate, bitrate / 1024 /* kbit/s */);
 
 	DEBUG_NOTICE("format: yu12 = yuv420p = i420\n");
-#endif
-
-#if 1 /* BeagleBoard-xM with camera*/
+#else
+/* BeagleBoard-xM with camera*/
 /*	snprintf(pipeline, sizeof(pipeline), "v4l2src name=source device=/dev/video2 always-copy=false ! "*/
 	snprintf(pipeline, sizeof(pipeline), "appsrc name=source ! "
 	                                     "video/x-raw-yuv,width=%d,height=%d,format=(fourcc)UYVY,framerate=%d/1 ! "

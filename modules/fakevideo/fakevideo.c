@@ -99,7 +99,7 @@ static int src_alloc(struct vidsrc_st **stp, struct vidsrc *vs,
 	st->frameh = frameh;
 	st->arg    = arg;
 
-	err = vidframe_alloc(&st->frame, VID_FMT_YUV420P, size);
+	err = vidframe_alloc(&st->frame, VID_FMT_INTERNAL, size);
 	if (err)
 		goto out;
 

@@ -182,7 +182,7 @@ int vp8_encode(struct videnc_state *ves, bool update,
 	vpx_image_t img;
 	int err, i;
 
-	if (!ves || !frame || !pkth || frame->fmt != VID_FMT_YUV420P)
+	if (!ves || !frame || !pkth || frame->fmt != VID_FMT_INTERNAL)
 		return EINVAL;
 
 	if (!ves->ctxup || !vidsz_cmp(&ves->size, &frame->size)) {

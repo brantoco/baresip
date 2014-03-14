@@ -230,7 +230,7 @@ static int alloc_handler(struct vidsrc_st **stp, struct vidsrc *vs,
 		goto out;
 	}
 
-	err = vidframe_alloc(&st->frame, VID_FMT_YUV420P, size);
+	err = vidframe_alloc(&st->frame, VID_FMT_INTERNAL, size);
 	if (err)
 		goto out;
 

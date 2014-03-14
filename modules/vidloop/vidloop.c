@@ -112,9 +112,9 @@ static void vidsrc_frame_handler(struct vidframe *frame, void *arg)
 
 	++vl->stat.frames;
 
-	if (frame->fmt != VID_FMT_YUV420P) {
+	if (frame->fmt != VID_FMT_INTERNAL) {
 
-		if (vidframe_alloc(&f2, VID_FMT_YUV420P, &frame->size))
+		if (vidframe_alloc(&f2, VID_FMT_INTERNAL, &frame->size))
 			return;
 
 		vidconv(f2, frame, 0);

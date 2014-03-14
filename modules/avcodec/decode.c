@@ -173,7 +173,7 @@ static int ffdecode(struct viddec_state *st, struct vidframe *frame,
 		}
 		frame->size.w = st->ctx->width;
 		frame->size.h = st->ctx->height;
-		frame->fmt    = VID_FMT_YUV420P;
+		frame->fmt    = VID_FMT_INTERNAL;
 	}
 
  out:

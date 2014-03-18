@@ -132,12 +132,16 @@ void vidrec_init_once(int width, int height, int framerate, int bitrate, enum Co
 
 void vidrec_deinit(void)
 {
+	if (!int_initialized) {
+		return;
+	}
+
 	cmd_unregister(cmdv);
 
 	internal_video_stop();
 
-	mem_deref(int_sps);
-	mem_deref(int_pps);
+	int_sps = mem_deref(int_sps);
+	int_pps = mem_deref(int_pps);
 
 	int_initialized = 0;
 

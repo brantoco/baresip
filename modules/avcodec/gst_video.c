@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2014 Fadeev Alexander
  */
+#include <re.h>
 #include <stdlib.h>
 #include <string.h>
 #define __USE_POSIX199309
@@ -13,10 +14,14 @@
 #include <gst/app/gstappsrc.h>
 #include "gst_video.h"
 
-
 #define DEBUG_MODULE "gst"
 #define DEBUG_LEVEL 5
 #include <re_dbg.h>
+
+// For usleep
+#define __USE_BSD
+#include <unistd.h>
+
 
 
 /**
@@ -24,8 +29,11 @@
  */
 struct gst_video_state {
 	/* Gstreamer */
-	GstElement *pipeline, *source;
-	GMainLoop *loop;
+	GstElement *pipeline, *source, *sink;
+	GstBus *bus;
+	gulong need_data_handler;
+	gulong enough_data_handler;
+	gulong new_buffer_handler;
 
 	/* Main loop thread. */
 	int run;
@@ -41,47 +49,31 @@ struct gst_video_state {
 	void *arg;
 };
 
-static void *internal_thread(void *arg)
+
+static void internal_bus_watch_handler(struct gst_video_state *st)
 {
-	struct gst_video_state *st = arg;
-
-	/* Now set to playing and iterate. */
-	DEBUG_NOTICE("Setting pipeline to PLAYING\n");
-	gst_element_set_state(st->pipeline, GST_STATE_PLAYING);
-
-	while (st->run) {
-		g_main_loop_run(st->loop);
-	}
-
-	return NULL;
-}
-
-static gboolean internal_bus_watch_handler(GstBus *bus, GstMessage *msg, gpointer data)
-{
-	struct gst_video_state *st = data;
-	GMainLoop *loop = st->loop;
 	GstTagList *tag_list;
 	gchar *title;
 	GError *err;
 	gchar *d;
 
-	(void)bus;
+	GstMessage *msg = gst_bus_pop(st->bus);
+
+	if (!msg) {
+		// take a nap (300ms)
+		usleep(300 * 1000);
+		return;
+	}
 
 	switch (GST_MESSAGE_TYPE(msg)) {
 
 	case GST_MESSAGE_EOS:
-		DEBUG_NOTICE("End-of-stream\n");
 
 		/* XXX decrementing repeat count? */
 
 		/* Re-start stream */
-		if (st->run) {
-			gst_element_set_state(st->pipeline, GST_STATE_NULL);
-			gst_element_set_state(st->pipeline, GST_STATE_PLAYING);
-		}
-		else {
-			g_main_loop_quit(loop);
-		}
+		gst_element_set_state(st->pipeline, GST_STATE_NULL);
+		gst_element_set_state(st->pipeline, GST_STATE_PLAYING);
 		break;
 
 	case GST_MESSAGE_ERROR:
@@ -95,7 +87,6 @@ static gboolean internal_bus_watch_handler(GstBus *bus, GstMessage *msg, gpointe
 		g_error_free(err);
 
 		st->run = FALSE;
-		g_main_loop_quit(loop);
 		break;
 
 	case GST_MESSAGE_TAG:
@@ -111,8 +102,28 @@ static gboolean internal_bus_watch_handler(GstBus *bus, GstMessage *msg, gpointe
 		break;
 	}
 
-	return TRUE;
+	gst_message_unref(msg);
 }
+
+
+static void *internal_thread(void *arg)
+{
+	struct gst_video_state *st = arg;
+
+	/* Now set to playing and iterate. */
+	DEBUG_NOTICE("Setting pipeline to PLAYING\n");
+
+	gst_element_set_state(st->pipeline, GST_STATE_PLAYING);
+
+	while (st->run) {
+		internal_bus_watch_handler(st);
+	}
+
+	DEBUG_NOTICE("Pipeline thread was stopped.\n");
+
+	return NULL;
+}
+
 
 static void internal_appsrc_start_feed(GstElement * pipeline, guint size, struct gst_video_state *st)
 {
@@ -132,7 +143,6 @@ static void internal_appsrc_stop_feed(GstElement * pipeline, struct gst_video_st
 	pthread_mutex_lock(&st->mutex);
 	st->bwait = TRUE;
 	pthread_mutex_unlock(&st->mutex);
-
 }
 
 /* The appsink has received a buffer */
@@ -142,7 +152,6 @@ static void internal_appsink_new_buffer(GstElement *sink, struct gst_video_state
 
 	/* Retrieve the buffer */
 	g_signal_emit_by_name(sink, "pull-buffer", &buffer);
-
 
 	if (buffer) {
 		guint8 *data = GST_BUFFER_DATA(buffer);
@@ -174,15 +183,12 @@ static void internal_appsink_new_buffer(GstElement *sink, struct gst_video_state
 gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, void (*f)(void *dst, int size, void *arg), void *arg)
 {
 	GstElement *source, *sink;
-	GstBus *bus;
 	GError* gerror = NULL;
 	gchar *version;
 	char pipeline[1024];
 	int err = 0;
 
-	struct gst_video_state *st = malloc(sizeof(struct gst_video_state));
-
-	memset(st, 0, sizeof(struct gst_video_state));
+	struct gst_video_state *st = mem_zalloc(sizeof(struct gst_video_state), NULL);
 
 	gst_init(NULL, NULL);
 
@@ -233,22 +239,21 @@ gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, 
 	}
 
 	st->source = source;
+	st->sink = sink;
 
 #if 1
 	/* Configure appsource*/
-	g_signal_connect(source, "need-data", G_CALLBACK(internal_appsrc_start_feed), st);
-	g_signal_connect(source, "enough-data", G_CALLBACK(internal_appsrc_stop_feed), st);
+	st->need_data_handler = g_signal_connect(source, "need-data", G_CALLBACK(internal_appsrc_start_feed), st);
+	st->enough_data_handler = g_signal_connect(source, "enough-data", G_CALLBACK(internal_appsrc_stop_feed), st);
 #endif
 
 	/* Configure appsink. */
-	g_signal_connect(sink, "new-buffer", G_CALLBACK(internal_appsink_new_buffer), st);
+	st->new_buffer_handler = g_signal_connect(sink, "new-buffer", G_CALLBACK(internal_appsink_new_buffer), st);
 
 	/********************* Misc **************************/
 
 	/* Bus watch */
-	bus = gst_pipeline_get_bus(GST_PIPELINE(st->pipeline));
-	gst_bus_add_watch(bus, internal_bus_watch_handler, st);
-	gst_object_unref(bus);
+	st->bus = gst_pipeline_get_bus(GST_PIPELINE(st->pipeline));
 
 	/********************* Thread **************************/
 
@@ -261,8 +266,6 @@ gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, 
 	if (GST_STATE_CHANGE_FAILURE == err) {
 		g_warning("set state returned GST_STATE_CHANGE_FAILUER\n");
 	}
-
-	st->loop = g_main_loop_new(NULL, FALSE);
 
 	/* Launch thread with gstreamer loop. */
 	st->run = TRUE;
@@ -287,21 +290,24 @@ out:
 
 void gst_video_free(gst_video_t *ctx)
 {
-
 	struct gst_video_state *st = (struct gst_video_state *)ctx;
 
 	if (st) {
+		/* Remove asynchronous callbacks to prevent using gst_video_t context ("st") after releasing. */
+		g_signal_handler_disconnect(st->source, st->need_data_handler);
+		g_signal_handler_disconnect(st->source, st->enough_data_handler);
+		g_signal_handler_disconnect(st->sink, st->new_buffer_handler);
+
 		/* Stop thread. */
 		if (st->run) {
 			st->run = FALSE;
-			g_main_loop_quit(st->loop);
 			pthread_join(st->tid, NULL);
 		}
 
 		gst_element_set_state(st->pipeline, GST_STATE_NULL);
 		gst_object_unref(GST_OBJECT(st->pipeline));
 
-		free(st);
+		mem_deref(st);
 	}
 }
 

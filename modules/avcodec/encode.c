@@ -68,7 +68,6 @@ struct videnc_state {
 	int bitrate;
 	struct mbuf *sps;
 	struct mbuf *pps;
-	pthread_mutex_t release_lock;
 #elif defined(USE_X264)
 	x264_t *x264;
 #endif
@@ -80,10 +79,6 @@ static void destructor(void *arg)
 	struct videnc_state *st = arg;
 
 #if defined(USE_GST_VIDEO)
-	pthread_mutex_lock(&st->release_lock);
-#endif
-
-#if defined(USE_GST_VIDEO)
 	gst_video_free(st->gst_video);
 	vidrec_deinit();
 	st->sps = mem_deref(st->sps);  // Always NULL after that.
@@ -92,22 +87,18 @@ static void destructor(void *arg)
 	if (st->x264)
 		x264_encoder_close(st->x264);
 #endif
-
 	st->mb = mem_deref(st->mb); // Always NULL after that.
 	st->mb_frag = mem_deref(st->mb_frag);  // Always NULL after that.
 
 	if (st->ctx) {
 		if (st->ctx->codec)
 			avcodec_close(st->ctx);
+
 		av_free(st->ctx);
 	}
 
 	if (st->pict)
 		av_free(st->pict);
-
-#if defined(USE_GST_VIDEO)
-	pthread_mutex_unlock(&st->release_lock);
-#endif
 }
 
 
@@ -430,12 +421,6 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 {
 	struct videnc_state *st = arg;
 
-	pthread_mutex_lock(&st->release_lock);
-
-	if (!st->mb || !st->sps || !st->pps) {
-		return;
-	}
-
 	mbuf_rewind(st->mb);
 	mbuf_write_mem(st->mb, dst, size); // TODO: delete copying
 
@@ -473,8 +458,6 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 
 	/* Send frame to video recording subsystem. */
 	vidrec_video_write(dst, size);
-
-	pthread_mutex_unlock(&st->release_lock);
 }
 
 int encode_gst(struct videnc_state *st, bool update, const struct vidframe *frame,
@@ -483,17 +466,12 @@ int encode_gst(struct videnc_state *st, bool update, const struct vidframe *fram
 	unsigned char *data;
 	int size;
 
-	if (!st || !frame || !pkth)
-		return EINVAL;
-
 	if (!st->gst_video || !vidsz_cmp(&st->encsize, &frame->size))
 	{
 		int width = frame->size.w;
 		int height = frame->size.h;
 		int fps = st->encprm.fps;
 		int bitrate = st->encprm.bitrate;
-
-		pthread_mutex_init(&st->release_lock, NULL);
 
 		/* If caps was changed. */
 		if (st->gst_video) {

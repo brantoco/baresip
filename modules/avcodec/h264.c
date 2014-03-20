@@ -167,12 +167,17 @@ int h264_nal_send(bool first, bool last,
 
 int h264_packetize(struct mbuf *mb, size_t pktsize,
 		   videnc_packet_h *pkth, void *arg,
-		   struct mbuf *sps, struct mbuf *pps)
+		   struct mbuf *sps, struct mbuf *pps,
+		   bool *is_key)
 {
 	const uint8_t *start = mb->buf;
 	const uint8_t *end   = start + mb->end;
 	const uint8_t *r;
 	int err = 0;
+
+	if (is_key) {
+		*is_key = false;
+	}
 
 	r = h264_find_startcode(mb->buf, end);
 
@@ -202,6 +207,10 @@ int h264_packetize(struct mbuf *mb, size_t pktsize,
 				mbuf_write_mem(sps, r, r1 - r);
 			}
 			break;
+		case H264_NAL_IDR_SLICE:
+			if (is_key) {
+				*is_key = true;
+			}
 		}
 
 		err |= h264_nal_send(true, true, (r1 >= end), r[0],

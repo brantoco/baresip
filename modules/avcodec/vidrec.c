@@ -24,6 +24,7 @@ static int int_bitrate;
 static enum CodecID int_codec_id;
 static struct mbuf *int_sps;
 static struct mbuf *int_pps;
+static bool int_was_key_frame;
 
 static vidcont_t *f;
 
@@ -47,18 +48,24 @@ static void internal_video_stop(void)
 	if (f) {
 		vidcont_free(f);
 		f = NULL;
+		int_was_key_frame = false;
 	}
 
 	pthread_mutex_unlock(&int_lock);
 }
 
 
-static void internal_video_write(void *src, size_t size)
+static void internal_video_write(void *src, size_t size, bool is_key)
 {
 	pthread_mutex_lock(&int_lock);
 
-	if (f) {
-		vidcont_video_write(f, src, size);
+	/* Wait until key frame. */
+	if (is_key) {
+		int_was_key_frame = true;
+	}
+
+	if (f && int_was_key_frame) {
+		vidcont_video_write(f, src, size, is_key);
 	}
 
 	pthread_mutex_unlock(&int_lock);
@@ -67,7 +74,10 @@ static void internal_video_write(void *src, size_t size)
 
 static int cmd_video_start(struct re_printf *pf, void *arg)
 {
-	char *path;
+	char *video_path;
+	char *preview_path;
+
+	struct re_printf pf_preview;
 
 	(void)arg;
 
@@ -75,15 +85,24 @@ static int cmd_video_start(struct re_printf *pf, void *arg)
 		return EINVAL;
 	}
 
-	path = strtok((char *)pf->arg, " \r\n");
+	/* Parse incoming arguments. */
+	video_path = strtok((char *)pf->arg, " \r\n");
+	preview_path = strtok(NULL, " \r\n");
 
-	if (!path) {
-		path = (char *)pf->arg;
+	if (!video_path) {
+		video_path = (char *)pf->arg;
 	}
 
-	internal_video_start(path);
+	pf_preview.arg = preview_path;
 
-	debug("Start video recording: %s\n", path);
+	/* Make preview. */
+	cmd_process(NULL, 'o', &pf_preview);
+
+	/* Start video recording. */
+	internal_video_start(video_path);
+
+	debug("Start video recording: %s\n", video_path);
+	debug("Video preview: %s\n", preview_path);
 
 	return 0;
 }
@@ -121,6 +140,7 @@ void vidrec_init_once(int width, int height, int framerate, int bitrate, enum Co
 	int_codec_id = codec_id;
 	int_sps = mbuf_alloc_ref(sps);
 	int_pps = mbuf_alloc_ref(pps);
+	int_was_key_frame = false;
 
 	cmd_register(cmdv, ARRAY_SIZE(cmdv));
 
@@ -149,7 +169,7 @@ void vidrec_deinit(void)
 }
 
 
-void vidrec_video_write(void *src, size_t size)
+void vidrec_video_write(void *src, size_t size, bool is_key)
 {
 	if (!int_initialized) {
 		return;
@@ -159,5 +179,5 @@ void vidrec_video_write(void *src, size_t size)
 		return;
 	}
 
-	internal_video_write(src, size);
+	internal_video_write(src, size, is_key);
 }

@@ -156,7 +156,7 @@ void vidcont_free(vidcont_t *ctx)
 	mem_deref(int_ctx);
 }
 
-int vidcont_video_write(vidcont_t *ctx, void *buf, int size)
+int vidcont_video_write(vidcont_t *ctx, void *buf, int size, bool is_key)
 {
 	AVPacket pkt;
 	int64_t now;
@@ -176,10 +176,12 @@ int vidcont_video_write(vidcont_t *ctx, void *buf, int size)
 	av_init_packet(&pkt);
 
 	pkt.stream_index = int_ctx->st->index;
-	pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.data = buf;
 	pkt.size = size;
 	pkt.pts = av_rescale_q((now - int_ctx->start_time), (AVRational){1, 1000000}, int_ctx->st->time_base);
+	if (is_key) {
+		pkt.flags |= AV_PKT_FLAG_KEY;
+	}
 
 	/* write the compressed frame in the media file */
 	return av_interleaved_write_frame(int_ctx->av, &pkt);

@@ -419,6 +419,8 @@ int encode_update(struct videnc_state **vesp, const struct vidcodec *vc,
 #if defined(USE_GST_VIDEO)
 static void gst_pull_callback(void *dst, int size, void *arg)
 {
+	bool is_key;
+
 	struct videnc_state *st = arg;
 
 	mbuf_rewind(st->mb);
@@ -432,7 +434,7 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 		break;
 
 	case CODEC_ID_H264:
-		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg, st->sps, st->pps);
+		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg, st->sps, st->pps, &is_key);
 
 		if (st->sps->end && st->pps->end) {
 			/*
@@ -457,7 +459,7 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 	}
 
 	/* Send frame to video recording subsystem. */
-	vidrec_video_write(dst, size);
+	vidrec_video_write(dst, size, is_key);
 }
 
 int encode_gst(struct videnc_state *st, bool update, const struct vidframe *frame,
@@ -763,7 +765,7 @@ int encode(struct videnc_state *st, bool update, const struct vidframe *frame,
 		break;
 
 	case CODEC_ID_H264:
-		err = h264_packetize(st->mb, st->encprm.pktsize, pkth, arg, NULL, NULL);
+		err = h264_packetize(st->mb, st->encprm.pktsize, pkth, arg, NULL, NULL, NULL);
 		break;
 
 	case CODEC_ID_MPEG4:

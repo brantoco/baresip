@@ -304,10 +304,16 @@ void gst_video_free(gst_video_t *ctx)
 			pthread_join(st->tid, NULL);
 		}
 
+		gst_object_unref(GST_OBJECT(st->source));
+		gst_object_unref(GST_OBJECT(st->sink));
+		gst_object_unref(GST_OBJECT(st->bus));
+
 		gst_element_set_state(st->pipeline, GST_STATE_NULL);
 		gst_object_unref(GST_OBJECT(st->pipeline));
 
 		mem_deref(st);
+
+		DEBUG_NOTICE("deinitialized\n");
 	}
 }
 

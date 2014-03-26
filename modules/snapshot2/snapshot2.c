@@ -17,7 +17,7 @@ static char *image_path;
 static char *preview_path;
 
 
-static void thread_create_png(void *arg)
+static void *thread_create_png(void *arg)
 {
 	struct vidframe *frame = arg;
 
@@ -25,6 +25,8 @@ static void thread_create_png(void *arg)
 	png_save_vidframe(frame, image_path, preview_path);
 	mem_deref(frame);
 	pthread_mutex_unlock(&png_create_lock);
+
+	return NULL;
 }
 
 
@@ -36,6 +38,8 @@ static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 		return 0;
 
 	if (flag_enc) {
+		pthread_t tid;
+
 		if (image_path) {
 			debug("Snapshot2: %s\n", image_path);
 		}
@@ -48,11 +52,9 @@ static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 
 		flag_enc = false;
 
-		if (vidframe_alloc(&frame_copy, VID_FMT_YUV420P, &frame->size) == 0) {
-			pthread_t tid;
-			mem_ref(frame);
-			pthread_create(&tid, NULL, thread_create_png, frame);
-		}
+		mem_ref(frame);
+
+		pthread_create(&tid, NULL, thread_create_png, frame);
 	}
 
 	return 0;

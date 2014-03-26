@@ -7,12 +7,25 @@
 #include <re.h>
 #include <rem.h>
 #include <baresip.h>
+#include <pthread.h>
 #include "png_vf.h"
 
 
+static pthread_mutex_t png_create_lock =  PTHREAD_MUTEX_INITIALIZER;
 static bool flag_enc;
 static char *image_path;
 static char *preview_path;
+
+
+static void thread_create_png(void *arg)
+{
+	struct vidframe *frame = arg;
+
+	pthread_mutex_lock(&png_create_lock);
+	png_save_vidframe(frame, image_path, preview_path);
+	mem_deref(frame);
+	pthread_mutex_unlock(&png_create_lock);
+}
 
 
 static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
@@ -23,9 +36,23 @@ static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 		return 0;
 
 	if (flag_enc) {
-		debug("Snapshot: %s, %s\n", image_path, preview_path);
+		if (image_path) {
+			debug("Snapshot2: %s\n", image_path);
+		}
+
+		if (preview_path) {
+			debug("Snapshot2 preview: %s\n", preview_path);
+		} else {
+			debug("Snapshot2 preview is not set\n");
+		}
+
 		flag_enc = false;
-		png_save_vidframe(frame, image_path, preview_path);
+
+		if (vidframe_alloc(&frame_copy, VID_FMT_YUV420P, &frame->size) == 0) {
+			pthread_t tid;
+			mem_ref(frame);
+			pthread_create(&tid, NULL, thread_create_png, frame);
+		}
 	}
 
 	return 0;
@@ -40,6 +67,8 @@ static int cmd_snapshot(struct re_printf *pf, void *arg)
 		return EINVAL;
 	}
 
+	pthread_mutex_lock(&png_create_lock);
+
 	image_path = strtok((char *)pf->arg, " \r\n");
 	preview_path = strtok(NULL, " \r\n");
 
@@ -47,7 +76,13 @@ static int cmd_snapshot(struct re_printf *pf, void *arg)
 		image_path = (char *)pf->arg;
 	}
 
+	if (!preview_path) {
+		preview_path = image_path;
+	}
+
 	flag_enc = true;
+
+	pthread_mutex_unlock(&png_create_lock);
 
 	return 0;
 }

@@ -120,6 +120,8 @@ static int png_save(const struct vidframe *vf, const char *path)
 	png_set_rows(png_ptr, info_ptr, png_row_pointers);
 	png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
 
+	debug("Image is saved: %s\n", path);
+
  out:
 	/* Finish writing. */
 	png_save_free(png_ptr, png_row_pointers, height);
@@ -156,30 +158,29 @@ int png_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 		vf = f3;
 	}
 
-	png_save(vf, path);
+	if (path && path != preview_path) {
+		png_save(vf, path);
+	}
 
 	if (!f2) {
 		error("Snapshot2: RGB->RGB vidconv is not implemented!\n");
 		goto frame_out;
 	}
 
-	if (!preview_path) {
-		warning("Snapshot2: Preview path is not set\n");
-		goto frame_out;
+	if (preview_path) {
+		/* Create preview frame. */
+		if (vidframe_alloc(&preview_frame, VID_FMT_RGB32, &preview_size)) {
+			goto frame_out;
+		}
+
+		/* Crop source image. */
+		f2->size.w = (unsigned)min((double)f2->size.w, (double)f2->size.h);
+		f2->size.h = f2->size.w;
+
+		vidconv(preview_frame, f2, NULL);
+
+		png_save(preview_frame, preview_path);
 	}
-
-	/* Create preview frame. */
-	if (vidframe_alloc(&preview_frame, VID_FMT_RGB32, &preview_size)) {
-		goto frame_out;
-	}
-
-	/* Crop source image. */
-	f2->size.w = (unsigned)min((double)f2->size.w, (double)f2->size.h);
-	f2->size.h = f2->size.w;
-
-	vidconv(preview_frame, f2, NULL);
-
-	png_save(preview_frame, preview_path);
 
  frame_out:
 	/* Finish writing. */

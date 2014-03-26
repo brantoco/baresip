@@ -619,6 +619,10 @@ int encode_x264(struct videnc_state *st, bool update,
 	int i_nal;
 	int i, err, ret;
 
+#ifdef TARGET_BRANTO_BALL
+	struct vidframe *f;
+#endif
+
 	if (!st->x264 || !vidsz_cmp(&st->encsize, &frame->size)) {
 
 		err = open_encoder_x264(st, &st->encprm, &frame->size);
@@ -633,7 +637,22 @@ int encode_x264(struct videnc_state *st, bool update,
 		debug("avcodec: x264 picture update\n");
 	}
 
+#ifndef TARGET_BRANTO_BALL
 	x264_picture_init(&pic_in);
+#else
+	/* Actually, it's because of older version of libx264 on BeagleBoard. */
+	x264_picture_alloc(&pic_in, X264_CSP_I420, frame->size.w, frame->size.h);
+
+	/* To convert UYVY -> YUV420. libx264 does not support UYVY. */
+	err = vidframe_alloc(&f, VID_FMT_YUV420P, &frame->size);
+	if (err) {
+		return err;
+	}
+
+	vidconv(f, frame, NULL);
+
+	frame = f;
+#endif
 
 	pic_in.i_type = update ? X264_TYPE_IDR : X264_TYPE_AUTO;
 	pic_in.i_qpplus1 = 0;
@@ -679,6 +698,10 @@ int encode_x264(struct videnc_state *st, bool update,
 				    nal[i].i_payload - offset,
 				    st->encprm.pktsize, pkth, arg);
 	}
+
+#ifdef TARGET_BRANTO_BALL
+	mem_deref(f);
+#endif
 
 	return err;
 }

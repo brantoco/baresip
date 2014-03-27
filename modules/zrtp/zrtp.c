@@ -253,6 +253,8 @@ static int module_init(void)
 
 	zrtp_config_defaults(&zrtp_config);
 
+	zrtp_config.lic_mode = ZRTP_LICENSE_MODE_UNLIMITED;
+
 	err = conf_path_get(config_path, sizeof(config_path));
 	if (err) {
 		warning("zrtp: could not get config path: %m\n", err);

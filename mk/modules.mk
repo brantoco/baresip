@@ -41,6 +41,7 @@
 #   USE_V4L2          Video4Linux2 module
 #   USE_WINWAVE       Windows audio driver
 #   USE_X11           X11 video output
+#   USE_ZRTP          ZRTP security protocol
 #
 
 
@@ -164,6 +165,8 @@ USE_X11 := $(shell [ -f $(SYSROOT)/include/X11/Xlib.h ] || \
 #	|| [ -f $(SYSROOT)/local/include/vpx/vp8.h ] \
 #	|| [ -f $(SYSROOT_ALT)/include/vpx/vp8.h ] \
 #	&& echo "yes")
+USE_ZRTP := $(shell [ -d $(SYSROOT)/local/include/libzrtp ]\
+	&& echo "yes")
 endif
 
 # Platform specific modules
@@ -347,6 +350,9 @@ endif
 ifneq ($(USE_X11),)
 MODULES   += x11 x11grab
 endif
+ifneq ($(USE_ZRTP),)
+MODULES   += zrtp
+endif
 
 ifeq ($(OS),linux)
 MODULES   += dtmfio
@@ -356,6 +362,5 @@ endif
 MODULES   += server snapshot2
 
 ifneq ($(TARGET_BRANTO_BALL),)
-CFLAGS    += -DTARGET_BRANTO_BALL -DUSE_GST_VIDEO
-USE_GST   = yes
+CFLAGS    += -DTARGET_BRANTO_BALL
 endif

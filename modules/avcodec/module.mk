@@ -18,10 +18,11 @@ ifneq ($(USE_GST_VIDEO),)
 $(MOD)_SRCS	+= gst_video.c
 $(MOD)_LFLAGS	+= `pkg-config --libs gstreamer-0.10 gstreamer-app-0.10`
 CFLAGS          += -DUSE_GST_VIDEO `pkg-config --cflags gstreamer-0.10 gstreamer-app-0.10`
-endif
+else
 ifneq ($(USE_X264),)
-CFLAGS	+= -DUSE_X264
+CFLAGS		+= -DUSE_X264
 $(MOD)_LFLAGS	+= -lx264
+endif
 endif
 
 include mk/mod.mk

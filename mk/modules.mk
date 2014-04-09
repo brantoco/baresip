@@ -57,6 +57,7 @@ USE_L16   := 1
 ifneq ($(OS),win32)
 
 USE_ALSA  := $(shell [ -f $(SYSROOT)/include/alsa/asoundlib.h ] || \
+	[ -f $(SDK_PATH)/$(TARGET_SYS)/usr/include/alsa/asoundlib.h ] || \
 	[ -f $(SYSROOT_ALT)/include/alsa/asoundlib.h ] && echo "yes")
 USE_AMR   := $(shell [ -d $(SYSROOT)/include/opencore-amrnb ] || \
 	[ -d $(SYSROOT_ALT)/include/opencore-amrnb ] || \
@@ -156,7 +157,8 @@ USE_UUID  := $(shell [ -f $(SYSROOT)/include/uuid/uuid.h ] && echo "yes")
 #	[ -f $(SYSROOT)/local/include/libv4l1.h ] \
 #	&& echo "yes")
 USE_V4L2  := $(shell [ -f $(SYSROOT)/include/libv4l2.h ] || \
-	[ -f $(SYSROOT)/local/include/libv4l2.h ] \
+	[ -f $(SYSROOT)/local/include/libv4l2.h ] || \
+	[ -f $(SDK_PATH)/$(TARGET_SYS)/usr/include/libv4l2.h ] \
 	&& echo "yes")
 USE_X11 := $(shell [ -f $(SYSROOT)/include/X11/Xlib.h ] || \
 	[ -f $(SYSROOT)/local/include/X11/Xlib.h ] || \
@@ -189,7 +191,9 @@ USE_QTCAPTURE := yes
 
 endif
 ifeq ($(OS),linux)
-USE_EVDEV := $(shell [ -f $(SYSROOT)/include/linux/input.h ] && echo "yes")
+USE_EVDEV := $(shell [ -f $(SYSROOT)/include/linux/input.h ] || \
+	[ -f $(SDK_PATH)/$(TARGET_SYS)/usr/include/linux/input.h ] \
+	&& echo "yes")
 endif
 ifeq ($(OS),win32)
 USE_WINWAVE := yes
@@ -248,6 +252,7 @@ endif
 ifneq ($(USE_FFMPEG),)
 USE_FFMPEG_AVFORMAT := 1
 CFLAGS    += -I/usr/include/ffmpeg
+CFLAGS    += -I$(SYSROOT)/local/include
 CFLAGS    += -DUSE_FFMPEG
 MODULES   += avcodec
 ifneq ($(USE_FFMPEG_AVFORMAT),)

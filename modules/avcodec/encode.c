@@ -193,7 +193,7 @@ static int open_encoder(struct videnc_state *st,
 	st->ctx->time_base.den = prm->fps;
 
 	/* params to avoid ffmpeg/x264 default preset error */
-	if (st->codec_id == CODEC_ID_H264) {
+	if (st->codec_id == AV_CODEC_ID_H264) {
 		st->ctx->me_method = ME_UMH;
 		st->ctx->me_range = 16;
 		st->ctx->qmin = 10;
@@ -274,9 +274,9 @@ static void param_handler(const struct pl *name, const struct pl *val,
 {
 	struct videnc_state *st = arg;
 
-	if (st->codec_id == CODEC_ID_H263)
+	if (st->codec_id == AV_CODEC_ID_H263)
 		(void)decode_sdpparam_h263(st, name, val);
-	else if (st->codec_id == CODEC_ID_H264)
+	else if (st->codec_id == AV_CODEC_ID_H264)
 		(void)decode_sdpparam_h264(st, name, val);
 }
 
@@ -369,7 +369,7 @@ int encode_update(struct videnc_state **vesp, const struct vidcodec *vc,
 	st->encprm = *prm;
 
 	st->codec_id = avcodec_resolve_codecid(vc->name);
-	if (st->codec_id == CODEC_ID_NONE) {
+	if (st->codec_id == AV_CODEC_ID_NONE) {
 		err = EINVAL;
 		goto out;
 	}
@@ -383,7 +383,7 @@ int encode_update(struct videnc_state **vesp, const struct vidcodec *vc,
 
 	st->sz_max = st->mb->size;
 
-	if (st->codec_id == CODEC_ID_H264) {
+	if (st->codec_id == AV_CODEC_ID_H264) {
 #if !defined(USE_X264) && !defined(USE_GST_VIDEO)
 		err = init_encoder(st);
 #endif
@@ -429,11 +429,11 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 	/* TODO: Return error codes... somehow. */
 	switch (st->codec_id) {
 
-	case CODEC_ID_H263:
+	case AV_CODEC_ID_H263:
 		h263_packetize(st, st->mb, st->pkth, st->pkth_arg);
 		break;
 
-	case CODEC_ID_H264:
+	case AV_CODEC_ID_H264:
 		h264_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg, st->sps, st->pps, &is_key);
 
 		if (st->sps->end && st->pps->end) {
@@ -442,14 +442,14 @@ static void gst_pull_callback(void *dst, int size, void *arg)
 			 * So, theoretically, we have a moment, when user can't record a video, but actually video recording is enabled
 			 * at time when first frame will arrive to a client.
 			 */
-			vidrec_init_once(st->width, st->height, st->fps, st->bitrate, CODEC_ID_H264, st->sps, st->pps);
+			vidrec_init_once(st->width, st->height, st->fps, st->bitrate, AV_CODEC_ID_H264, st->sps, st->pps);
 
 			mbuf_rewind(st->sps);
 			mbuf_rewind(st->pps);
 		}
 		break;
 
-	case CODEC_ID_MPEG4:
+	case AV_CODEC_ID_MPEG4:
 		general_packetize(st->mb, st->encprm.pktsize, st->pkth, st->pkth_arg);
 		break;
 
@@ -783,15 +783,15 @@ int encode(struct videnc_state *st, bool update, const struct vidframe *frame,
 
 	switch (st->codec_id) {
 
-	case CODEC_ID_H263:
+	case AV_CODEC_ID_H263:
 		err = h263_packetize(st, st->mb, pkth, arg);
 		break;
 
-	case CODEC_ID_H264:
+	case AV_CODEC_ID_H264:
 		err = h264_packetize(st->mb, st->encprm.pktsize, pkth, arg, NULL, NULL, NULL);
 		break;
 
-	case CODEC_ID_MPEG4:
+	case AV_CODEC_ID_MPEG4:
 		err = general_packetize(st->mb, st->encprm.pktsize, pkth, arg);
 		break;
 

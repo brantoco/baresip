@@ -18,7 +18,7 @@ struct vidcont_int_t {
 };
 
 
-static AVStream *internal_add_video_stream(AVFormatContext *oc, int width, int height, int framerate, int bitrate, enum CodecID codec_id, struct mbuf *sps, struct mbuf *pps)
+static AVStream *internal_add_video_stream(AVFormatContext *oc, int width, int height, int framerate, int bitrate, enum AVCodecID codec_id, struct mbuf *sps, struct mbuf *pps)
 {
 	AVCodecContext *c;
 	AVStream *st;
@@ -68,7 +68,7 @@ static AVStream *internal_add_video_stream(AVFormatContext *oc, int width, int h
 	return st;
 }
 
-vidcont_t *vidcont_alloc(const char *filename, int width, int height, int framerate, int bitrate, enum CodecID codec_id, struct mbuf *sps, struct mbuf *pps)
+vidcont_t *vidcont_alloc(const char *filename, int width, int height, int framerate, int bitrate, enum AVCodecID codec_id, struct mbuf *sps, struct mbuf *pps)
 {
 	struct vidcont_int_t *int_ctx = NULL;
 	AVFormatContext *av = NULL;

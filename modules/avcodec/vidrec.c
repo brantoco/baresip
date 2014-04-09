@@ -21,7 +21,7 @@ static int int_width;
 static int int_height;
 static int int_framerate;
 static int int_bitrate;
-static enum CodecID int_codec_id;
+static enum AVCodecID int_codec_id;
 static struct mbuf *int_sps;
 static struct mbuf *int_pps;
 static bool int_was_key_frame;
@@ -127,7 +127,7 @@ static const struct cmd cmdv[] = {
 };
 
 
-void vidrec_init_once(int width, int height, int framerate, int bitrate, enum CodecID codec_id, struct mbuf *sps, struct mbuf *pps)
+void vidrec_init_once(int width, int height, int framerate, int bitrate, enum AVCodecID codec_id, struct mbuf *sps, struct mbuf *pps)
 {
 	if (int_initialized) {
 		return;

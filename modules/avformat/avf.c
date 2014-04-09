@@ -294,7 +294,7 @@ static int alloc(struct vidsrc_st **stp, struct vidsrc *vs,
 		st->ctx    = ctx;
 		st->sindex = strm->index;
 
-		if (ctx->codec_id != CODEC_ID_NONE) {
+		if (ctx->codec_id != AV_CODEC_ID_NONE) {
 
 			st->codec = avcodec_find_decoder(ctx->codec_id);
 			if (!st->codec) {

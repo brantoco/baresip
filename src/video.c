@@ -222,13 +222,13 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 
 	lock_write_get(vtx->lock);
 
+#ifndef TARGET_BRANTO
 	/* Convert image */
 	if (frame->fmt != VID_FMT_INTERNAL) {
 
 		vtx->vsrc_size = frame->size;
 
 		if (!vtx->frame) {
-
 			err = vidframe_alloc(&vtx->frame, VID_FMT_INTERNAL,
 					     &vtx->vsrc_size);
 			if (err)
@@ -238,6 +238,7 @@ static void encode_rtp_send(struct vtx *vtx, struct vidframe *frame)
 		vidconv(vtx->frame, frame, 0);
 		frame = vtx->frame;
 	}
+#endif
 
 	/* Process video frame through all Video Filters */
 	for (le = vtx->filtl.head; le; le = le->next) {

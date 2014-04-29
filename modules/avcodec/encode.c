@@ -505,7 +505,7 @@ int encode_gst(struct videnc_state *st, bool update, const struct vidframe *fram
 		debug("avcodec: gstreamer picture update, it's not implemented...\n");
 	}
 
-#if 0
+#ifndef TARGET_BRANTO
 	/* I420 (YUV420P): hardcoded. */
 	size = frame->linesize[0] * st->height + frame->linesize[1] * st->height * 0.5 + frame->linesize[2] * st->height * 0.5;
 
@@ -521,9 +521,7 @@ int encode_gst(struct videnc_state *st, bool update, const struct vidframe *fram
 
 	memcpy(&data[size], frame->data[2], frame->linesize[2] * st->height * 0.5);
 	size += frame->linesize[2] * st->height * 0.5;
-#endif
-
-#if 1
+#else
 	/* UYVY: hardcoded. */
 	size = st->width * st->height * 2;
 

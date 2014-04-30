@@ -200,8 +200,12 @@ gst_video_t *gst_video_alloc(int width, int height, int framerate, int bitrate, 
 #ifndef TARGET_BRANTO_BALL
 	snprintf(pipeline, sizeof(pipeline), "appsrc name=source is-live=TRUE block=TRUE do-timestamp=TRUE ! "
 	                                     "videoparse width=%d height=%d format=i420 framerate=%d/1 ! "
-	                                     "x264enc byte-stream=TRUE rc-lookahead=0 sync-lookahead=0 bitrate=%d ! "
-	                                     "appsink name=sink emit-signals=TRUE drop=TRUE", width, height, framerate, bitrate / 1024 /* kbit/s */);
+                                        "TIPrepEncBuf contiguousInputFrame=false numOutputBufs=2 !"
+                                        "queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 !"
+                                        "TIVidenc1 codecName=h264enc engineName=codecServer resolution=1280x720 framerate=30/1 contiguousInputFrame=false !"
+                                        "queue max-size-buffers=2 max-size-time=0 max-size-bytes=0 ! "
+	                                     "appsink name=sink emit-signals=TRUE drop=TRUE",
+	                                     width, height, framerate, bitrate / 1024 /* kbit/s */);
 
 	DEBUG_NOTICE("format: yu12 = yuv420p = i420\n");
 #else

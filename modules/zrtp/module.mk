@@ -7,6 +7,6 @@
 MOD		:= zrtp
 $(MOD)_SRCS	+= zrtp.c
 $(MOD)_LFLAGS	+= -lzrtp -lbn
-CFLAGS          += -I/usr/local/include/libzrtp
+CFLAGS          += -I$(SYSROOT)/local/include/libzrtp
 
 include mk/mod.mk

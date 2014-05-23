@@ -14,6 +14,12 @@
 #include "avcodec.h"
 #include "vidrec.h"
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(54, 25, 0)
+#define AV_CODEC_ID_H264 CODEC_ID_H264
+#define AV_CODEC_ID_H264 CODEC_ID_H264
+#define AV_CODEC_ID_MPEG4 CODEC_ID_MPEG4
+#define AV_CODEC_ID_NONE CODEC_ID_NONE
+#endif
 
 int avcodec_resolve_codecid(const char *s)
 {

@@ -271,6 +271,8 @@ static void call_event_handler(struct call *call, enum call_event ev,
         }
 
 		case ANSWERMODE_AUTO:
+			ua_hangup_other_calls(ua, call, str);
+
 			(void)call_answer(call, 200);
 			break;
 

@@ -42,8 +42,9 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 	// 0
 	tnow = time(NULL);
 	tmx = localtime(&tnow);
+	imgdata = vf->data[0];
 
-	if (vf->fmt != VID_FMT_RGB32) 
+	if (vf->fmt != VID_FMT_RGB32)
 	{
 		err = vidframe_alloc(&f2, VID_FMT_RGB32, &vf->size);
 		if (err) goto out;
@@ -51,7 +52,7 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 		imgdata = f2->data[0];
 	}
 
-	fp = fopen(jpg_filename(tmx,path,filename_buf,sizeof(filename_buf)), "wb");
+	fp = fopen(jpg_filename(tmx, path, filename_buf, sizeof(filename_buf)), "wb");
 	if (fp == NULL) 
 	{
 		err = errno;
@@ -59,7 +60,6 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 	}
 
 	// 32bpp -> 24bpp
-	imgdata = f2->data[0];
 	pixs = width*height;
 	src = imgdata; 
 	dst = imgdata; 
@@ -79,7 +79,8 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 	cinfo.image_width = width;
 	cinfo.image_height = height;
 	cinfo.input_components = 3; // 24 bpp
-	cinfo.in_color_space = JCS_RGB;
+	// I wonder if this will make double conversion.
+	cinfo.in_color_space = JCS_EXT_BGR;
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, 85 , TRUE); // quality 85%
 

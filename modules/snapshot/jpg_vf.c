@@ -10,7 +10,7 @@
 #include <re.h>
 #include <rem.h>
 #include <baresip.h>
-#include "jpeglib.h"
+#include <jpeglib.h>
 #include "jpg_vf.h"
 
 static char *jpg_filename(const struct tm *tmx, const char *name,
@@ -65,10 +65,11 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 	dst = imgdata; 
 	while (pixs--)
 	{
-		*dst++=*src++; //R
-		*dst++=*src++; //G
-		*dst++=*src++; //B
-		src++; //A
+		dst[0] = src[2];
+		dst[1] = src[1];
+		dst[2] = src[0];
+		dst += 3;
+		src += 4;
 	}
 
 	// create jpg structures
@@ -80,7 +81,7 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path)
 	cinfo.image_height = height;
 	cinfo.input_components = 3; // 24 bpp
 	// I wonder if this will make double conversion.
-	cinfo.in_color_space = JCS_EXT_BGR;
+	cinfo.in_color_space = JCS_RGB;
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, 85 , TRUE); // quality 85%
 

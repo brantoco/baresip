@@ -8,7 +8,7 @@
 #include <rem.h>
 #include <baresip.h>
 #include <pthread.h>
-#include "png_vf.h"
+#include "jpg_vf.h"
 
 
 static pthread_mutex_t png_create_lock =  PTHREAD_MUTEX_INITIALIZER;
@@ -22,7 +22,7 @@ static void *thread_create_png(void *arg)
 	struct vidframe *frame = arg;
 
 	pthread_mutex_lock(&png_create_lock);
-	png_save_vidframe(frame, image_path, preview_path);
+	jpg_save_vidframe(frame, image_path, preview_path);
 	mem_deref(frame);
 	pthread_mutex_unlock(&png_create_lock);
 

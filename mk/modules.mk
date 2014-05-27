@@ -381,9 +381,6 @@ ifneq ($(USE_ZRTP),)
 MODULES   += zrtp
 endif
 USE_SNAPSHOT := $(shell [ -f $(SYSROOT)/include/jpeglib.h ] && echo "yes")
-ifeq ($(OS),linux)
-MODULES   += dtmfio
-endif
 # Branto-specific modules
 MODULES   += server snapshot2
 ifneq ($(TARGET_BRANTO_BALL),)

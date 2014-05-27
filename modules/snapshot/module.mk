@@ -5,7 +5,7 @@
 #
 
 MOD		:= snapshot
-$(MOD)_SRCS	+= snapshot.c png_vf.c jpg_vf.c
-$(MOD)_LFLAGS	+= -lpng -ljpeg
+$(MOD)_SRCS	+= snapshot.c jpg_vf.c
+$(MOD)_LFLAGS	+= -ljpeg
 
 include mk/mod.mk

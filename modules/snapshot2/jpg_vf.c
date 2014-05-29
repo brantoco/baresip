@@ -13,11 +13,8 @@
 #include <jpeglib.h>
 #include "jpg_vf.h"
 
-static char *jpg_filename(const struct tm *tmx, const char *name,
-			  char *buf, unsigned int length);
 
-
-int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *preview_path)
+static int jpg_save_vidframe_onefile(const struct vidframe *vf, const char *file_path, int downscale)
 {
 
 	struct		jpeg_compress_struct cinfo;
@@ -28,7 +25,6 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	int row_stride,pixs;
 	
 	FILE * fp;
-	char filename_buf[64];
 
 	struct vidframe *f2 = NULL;
 	int err = 0;
@@ -36,23 +32,18 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	unsigned int width = vf->size.w & ~1;
 	unsigned int height = vf->size.h & ~1;
 	
-	time_t tnow;
-	struct tm *tmx;
-	
-	// 0
-	tnow = time(NULL);
-	tmx = localtime(&tnow);
 	imgdata = vf->data[0];
 
 	if (vf->fmt != VID_FMT_RGB32)
 	{
 		err = vidframe_alloc(&f2, VID_FMT_RGB32, &vf->size);
 		if (err) goto out;
+
 		vidconv(f2, vf, NULL);
 		imgdata = f2->data[0];
 	}
 
-	fp = fopen(jpg_filename(tmx, path, filename_buf, sizeof(filename_buf)), "wb");
+	fp = fopen(file_path, "wb");
 	if (fp == NULL) 
 	{
 		err = errno;
@@ -65,10 +56,11 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	dst = imgdata; 
 	while (pixs--)
 	{
-		*dst++=*src++; //R
-		*dst++=*src++; //G
-		*dst++=*src++; //B
-		src++; //A
+		dst[0] = src[2];
+		dst[1] = src[1];
+		dst[2] = src[0];
+		dst += 3;
+		src += 4;
 	}
 
 	// create jpg structures
@@ -80,9 +72,12 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	cinfo.image_height = height;
 	cinfo.input_components = 3; // 24 bpp
 	// I wonder if this will make double conversion.
-	cinfo.in_color_space = JCS_EXT_BGR;
+	cinfo.in_color_space = JCS_RGB;
 	jpeg_set_defaults(&cinfo);
 	jpeg_set_quality(&cinfo, 85 , TRUE); // quality 85%
+
+	cinfo.scale_num = 1;
+	cinfo.scale_denom = downscale;
 
 	// compress
 	jpeg_start_compress(&cinfo, TRUE);
@@ -102,37 +97,29 @@ int jpg_save_vidframe(const struct vidframe *vf, const char *path, const char *p
 	/* Finish writing. */
 out:
 	jpeg_destroy_compress(&cinfo);
-	mem_deref(f2);
 	if (fp) fclose(fp);
 	return 0;
 }
 
 
-static char *jpg_filename(const struct tm *tmx, const char *name,
-			  char *buf, unsigned int length)
+/** vf_copy must always be our copy of the frame. */
+int jpg_save_vidframe(const struct vidframe *vf_copy, const char *file_path, const char *preview_file_path)
 {
-	/*
-	 * -2013-03-03-15-22-56.png - 24 chars
-	 */
-	if (strlen(name) + 24 >= length) {
-		buf[0] = '\0';
-		return buf;
+	if (file_path) {
+		debug("Making photo: %s\n", file_path);
+		jpg_save_vidframe_onefile(vf_copy, file_path, 1);
+
+		// TODO: Calculate the best downscale denominator based based on desired preview size and frame size.
+		// TODO
+//		if (preview_file_path) {
+//			debug("Making preview: %s\n", preview_file_path);
+//			jpg_save_vidframe_onefile(vf_copy, preview_file_path, 2);
+//		}
+
+	} else {
+		error("No image path given!\n");
+		return EINVAL;
 	}
 
-	sprintf(buf, (tmx->tm_mon < 9 ? "%s-%d-0%d" : "%s-%d-%d"), name,
-		1900 + tmx->tm_year, tmx->tm_mon + 1);
-
-	sprintf(buf + strlen(buf), (tmx->tm_mday < 10 ? "-0%d" : "-%d"),
-		tmx->tm_mday);
-
-	sprintf(buf + strlen(buf), (tmx->tm_hour < 10 ? "-0%d" : "-%d"),
-		tmx->tm_hour);
-
-	sprintf(buf + strlen(buf), (tmx->tm_min < 10 ? "-0%d" : "-%d"),
-		tmx->tm_min);
-
-	sprintf(buf + strlen(buf), (tmx->tm_sec < 10 ? "-0%d.jpg" : "-%d.jpg"),
-		tmx->tm_sec);
-
-	return buf;
+	return 0;
 }

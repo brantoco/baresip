@@ -17,13 +17,16 @@ static char *image_path;
 static char *preview_path;
 
 
-static void *thread_create_png(void *arg)
+static void *thread_create_jpg(void *arg)
 {
 	struct vidframe *frame = arg;
 
 	pthread_mutex_lock(&png_create_lock);
+
 	jpg_save_vidframe(frame, image_path, preview_path);
+
 	mem_deref(frame);
+
 	pthread_mutex_unlock(&png_create_lock);
 
 	return NULL;
@@ -32,13 +35,16 @@ static void *thread_create_png(void *arg)
 
 static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 {
+	struct vidframe *saved_frame;
+	pthread_t tid;
+	int err;
+
 	(void)st;
 
 	if (!frame)
 		return 0;
 
 	if (flag_enc) {
-		pthread_t tid;
 
 		if (image_path) {
 			debug("Snapshot2: %s\n", image_path);
@@ -52,9 +58,13 @@ static int encode(struct vidfilt_enc_st *st, struct vidframe *frame)
 
 		flag_enc = false;
 
-		mem_ref(frame);
+		// Let's just copy the frame in case it's from v4l2 mmap-ed memory (in which case we cannot mem_ref() it).
+		err = vidframe_alloc(&saved_frame, VID_FMT_RGB32, &frame->size);
+		if (err)
+			return 0;
 
-		pthread_create(&tid, NULL, thread_create_png, frame);
+		vidconv(saved_frame, frame, NULL);
+		pthread_create(&tid, NULL, thread_create_jpg, saved_frame);
 	}
 
 	return 0;
@@ -76,10 +86,6 @@ static int cmd_snapshot(struct re_printf *pf, void *arg)
 
 	if (!image_path) {
 		image_path = (char *)pf->arg;
-	}
-
-	if (!preview_path) {
-		preview_path = image_path;
 	}
 
 	flag_enc = true;

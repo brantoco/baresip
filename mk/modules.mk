@@ -176,7 +176,7 @@ USE_X11 := $(shell [ -f $(SYSROOT)/include/X11/Xlib.h ] || \
 #	&& echo "yes")
 USE_ZRTP := $(shell [ -d $(SYSROOT)/local/include/libzrtp ]\
 	&& echo "yes")
-USE_SNAPSHOT := $(shell echo "yes")
+USE_SNAPSHOT := $(shell [ -f $(SYSROOT)/include/jpeglib.h ] && echo "yes")
 
 endif
 
@@ -384,9 +384,14 @@ endif
 ifneq ($(USE_ZRTP),)
 MODULES   += zrtp
 endif
-USE_SNAPSHOT := $(shell [ -f $(SYSROOT)/include/jpeglib.h ] && echo "yes")
+ifeq ($(OS),linux)
+MODULES   += dtmfio
+endif
 # Branto-specific modules
-MODULES   += server snapshot2
+MODULES   += server
+ifneq ($(USE_SNAPSHOT),)
+MODULES   += snapshot2
+endif
 ifneq ($(TARGET_BRANTO_BALL),)
 CFLAGS    += -DTARGET_BRANTO_BALL
 endif

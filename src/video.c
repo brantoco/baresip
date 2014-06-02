@@ -663,8 +663,10 @@ static int set_encoder_format(struct vtx *vtx, const char *src,
 	struct vidsrc *vs = (struct vidsrc *)vidsrc_find(src);
 	int err;
 
-	if (!vs)
+	if (!vs) {
+		info("video: no video source %s\n", src);
 		return ENOENT;
+	}
 
 	vtx->vsrc_size       = *size;
 	vtx->vsrc_prm.fps    = get_fps(vtx->video);
@@ -682,8 +684,10 @@ static int set_encoder_format(struct vtx *vtx, const char *src,
 
 	vtx->mute_frame = mem_deref(vtx->mute_frame);
 	err = vidframe_alloc(&vtx->mute_frame, VID_FMT_INTERNAL, size);
-	if (err)
+	if (err) {
+		info("video: cannot allocate frame: %m\n", err);
 		return err;
+	}
 
 	vidframe_fill(vtx->mute_frame, 0xff, 0xff, 0xff);
 

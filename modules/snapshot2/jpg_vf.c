@@ -16,7 +16,6 @@
 
 static int jpg_save_vidframe_onefile(const struct vidframe *vf, const char *file_path, int downscale)
 {
-
 	struct		jpeg_compress_struct cinfo;
 	struct		jpeg_error_mgr jerr;
   	JSAMPROW	row_pointer[1];
@@ -74,10 +73,7 @@ static int jpg_save_vidframe_onefile(const struct vidframe *vf, const char *file
 	// I wonder if this will make double conversion.
 	cinfo.in_color_space = JCS_RGB;
 	jpeg_set_defaults(&cinfo);
-	jpeg_set_quality(&cinfo, 85 , TRUE); // quality 85%
-
-	cinfo.scale_num = 1;
-	cinfo.scale_denom = downscale;
+	jpeg_set_quality(&cinfo, 85 / downscale, TRUE); // quality 85%
 
 	// compress
 	jpeg_start_compress(&cinfo, TRUE);
@@ -110,11 +106,10 @@ int jpg_save_vidframe(const struct vidframe *vf_copy, const char *file_path, con
 		jpg_save_vidframe_onefile(vf_copy, file_path, 1);
 
 		// TODO: Calculate the best downscale denominator based based on desired preview size and frame size.
-		// TODO
-//		if (preview_file_path) {
-//			debug("Making preview: %s\n", preview_file_path);
-//			jpg_save_vidframe_onefile(vf_copy, preview_file_path, 2);
-//		}
+		if (preview_file_path) {
+			debug("Making preview: %s\n", preview_file_path);
+			jpg_save_vidframe_onefile(vf_copy, preview_file_path, 2);
+		}
 
 	} else {
 		error("No image path given!\n");

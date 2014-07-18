@@ -14,6 +14,13 @@ enum {
 	RTP_RECV_SIZE = 8192,
 };
 
+struct stream_activity_st {
+	struct stream *s;
+	struct tmr tmr;
+	bool flag;
+};
+
+static uint32_t	rtp_hangup_timeout=0;
 
 static inline int lostcalc(struct stream *s, uint16_t seq)
 {
@@ -88,6 +95,9 @@ static void stream_destructor(void *arg)
 	mem_deref(s->jbuf);
 	mem_deref(s->rtp);
 	mem_deref(s->cname);
+
+	if (s->sa)
+		mem_deref(s->sa);
 }
 
 
@@ -157,8 +167,54 @@ static void rtp_recv(const struct sa *src, const struct rtp_header *hdr,
 
 		s->rtph(hdr, mb, s->arg);
 	}
+
+    if (s->sa)
+        s->sa->flag = true;
 }
 
+static void rtp_hangup_timer_handler(void *arg)
+{
+    struct stream_activity_st *sa = arg;
+
+    if (sa->flag)
+        sa->flag = false;
+    else {
+        struct stream *s = sa->s;
+        struct call *c = s->call;
+        info("\nRTP hangup timeout.\n");
+        call_hangup(c,0,"RTP timeout");
+        return;
+    }
+
+    tmr_start(&sa->tmr, rtp_hangup_timeout * 1000, rtp_hangup_timer_handler, sa);
+}
+
+static void rtp_hangup_timeout_destructor(void *arg)
+{
+    struct stream_activity_st *sa = arg;
+    tmr_cancel(&sa->tmr);
+}
+
+static void rtp_hangup_timeout_alloc(struct stream *s)
+{
+    struct stream_activity_st *sa;
+    struct config *cfg;
+
+    s->sa = 0;
+    cfg = conf_config();
+    if (!cfg)
+        return;
+
+    if (cfg->avt.rtp_hangup_timeout>0) {
+        sa = mem_zalloc(sizeof(*sa), rtp_hangup_timeout_destructor);
+        if (!sa)
+            return;
+        sa->s = s;
+        s->sa = sa;
+        rtp_hangup_timeout = cfg->avt.rtp_hangup_timeout;
+        tmr_start(&sa->tmr, rtp_hangup_timeout * 1000, rtp_hangup_timer_handler, sa);
+    }
+}
 
 static void rtcp_handler(const struct sa *src, struct rtcp_msg *msg, void *arg)
 {
@@ -310,7 +366,9 @@ int stream_alloc(struct stream **sp, const struct config_avt *cfg,
 
 	s->pt_enc = -1;
 
-	list_append(call_streaml(call), &s->le, s);
+    rtp_hangup_timeout_alloc(s);
+
+    list_append(call_streaml(call), &s->le, s);
 
  out:
 	if (err)

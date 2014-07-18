@@ -171,7 +171,7 @@ struct config {
 		unsigned width, height; /**< Video resolution               */
 		uint32_t bitrate;       /**< Encoder bitrate in [bit/s]     */
 		uint32_t fps;           /**< Video framerate                */
-	} video;
+    } video;
 
 #ifndef TARGET_BRANTO_BALL
 #define VID_FMT_INTERNAL VID_FMT_YUV420P
@@ -190,7 +190,8 @@ struct config {
 		bool rtcp_mux;          /**< RTP/RTCP multiplexing          */
 		struct range jbuf_del;  /**< Delay, number of frames        */
 		bool rtp_stats;         /**< Enable RTP statistics          */
-	} avt;
+		int32_t rtp_hangup_timeout; /**< Time to hangup silent call in seconds */
+    } avt;
 
 	/* Network */
 	struct config_net {
@@ -606,8 +607,8 @@ struct vidsrc_st;
 
 /** Video Source parameters */
 struct vidsrc_prm {
-	int orient;       	/**< Wanted picture orientation (enum vidorient) */
-	int fps;          	/**< Wanted framerate                            */
+	int orient;		/**< Wanted picture orientation (enum vidorient)	*/
+	int fps;		/**< Wanted framerate					*/
 	struct vidsz *size;	/**< Wanted resolution					*/
 };
 

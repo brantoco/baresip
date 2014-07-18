@@ -228,7 +228,7 @@ static void ua_hangup_other_calls(struct ua *ua, struct call *call, const char *
     struct le *le, *le_u;
     struct list *ua_l;
     struct ua *tua;
-    int    n_calls;
+    int	   n_calls;
 
     ua_l = uag_list();
     if (ua_l) {

@@ -477,9 +477,9 @@ static int vd_open(struct vidsrc_st *st, const char *device)
 
 static int vd_close(struct vidsrc_st *st)
 {
-	if (st->fd >= 0)
-		return v4l2_close(st->fd);
-	return EINVAL;
+    if (st->fd >= 0)
+        return v4l2_close(st->fd);
+    return EINVAL;
 }
 
 static void destructor(void *arg)
@@ -494,11 +494,11 @@ static void destructor(void *arg)
 	stop_capturing(st);
 	uninit_device(st);
 
-	vd_close(st);
+    vd_close(st);
 
 	mem_deref(st->mb);
 	mem_deref(st->vs);
-	vst = NULL;
+    vst = NULL;
 }
 
 
@@ -578,16 +578,16 @@ static int alloc(struct vidsrc_st **stp, struct vidsrc *vs,
 	if (!stp || !size || !frameh)
 		return EINVAL;
 
-	if (vst) {
-		error("v4l2 busy - try to close device.\n");
-		vst = mem_deref(vst);
-		if (!vst)
-			error("v4l2: device closed.\n");
-		else
-			error("v4l2: can't close device.\n");
-	}
+    if (vst) {
+        error("v4l2 busy - try to close device.\n");
+        vst = mem_deref(vst);
+        if (!vst)
+            error("v4l2: device closed.\n");
+        else
+            error("v4l2: can't close device.\n");
+    }
 
-	if (!str_isset(dev))
+    if (!str_isset(dev))
 		dev = "/dev/video0";
 
 	st = mem_zalloc(sizeof(*st), destructor);
@@ -602,9 +602,9 @@ static int alloc(struct vidsrc_st **stp, struct vidsrc *vs,
 	st->frameh = frameh;
 	st->arg    = arg;
 
-	vst = st;
+    vst = st;
 
-	err = vd_open(st, dev);
+    err = vd_open(st, dev);
 	if (err)
 		goto out;
 

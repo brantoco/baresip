@@ -190,7 +190,7 @@ struct config {
 		bool rtcp_mux;          /**< RTP/RTCP multiplexing          */
 		struct range jbuf_del;  /**< Delay, number of frames        */
 		bool rtp_stats;         /**< Enable RTP statistics          */
-		int32_t rtp_hangup_timeout; /**< Time to hangup silent call in seconds */
+        uint32_t rtp_hangup_timeout; /**< Time to hangup silent call */
     } avt;
 
 	/* Network */
@@ -607,9 +607,9 @@ struct vidsrc_st;
 
 /** Video Source parameters */
 struct vidsrc_prm {
-	int orient;		/**< Wanted picture orientation (enum vidorient)	*/
-	int fps;		/**< Wanted framerate					*/
-	struct vidsz *size;	/**< Wanted resolution					*/
+	int orient;       /**< Wanted picture orientation (enum vidorient) */
+	int fps;          /**< Wanted framerate                            */
+    struct vidsz *size;	/**< Wanted resolution							 */
 };
 
 typedef void (vidsrc_frame_h)(struct vidframe *frame, void *arg);

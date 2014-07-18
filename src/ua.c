@@ -225,20 +225,36 @@ static const char *translate_errorcode(uint16_t scode)
 
 static void ua_hangup_other_calls(struct ua *ua, struct call *call, const char *str)
 {
-	struct le *le;
-	info("Incoming early call from %s, currently have %d calls\n", str, list_count(&ua->calls));
+    struct le *le, *le_u;
+    struct list *ua_l;
+    struct ua *tua;
+    int	   n_calls;
 
-	for (le = ua->calls.tail; le; le = le->prev) {
-		struct call *old_call = le->data;
-		if (old_call != call) {
-			struct le *old_le = le;
-			/* There MUST be a better way. */
-			le = le->prev;
-			list_unlink(old_le);
-			ua_hangup(ua, old_call, 486, "Another call incoming");
-			if (le) continue; else break;
-		}
-	}
+    ua_l = uag_list();
+    if (ua_l) {
+        n_calls = 0;
+        for (le_u = ua_l->head; le_u; le_u=le_u->next) {
+            tua = (struct ua *) le_u->data;
+            n_calls += list_count(&tua->calls);
+        }
+        info("Incoming call from %s, currently have %d calls. Hanging them up\n", str, n_calls - 1);
+
+        if (n_calls>1) {
+            for (le_u = ua_l->head; le_u; le_u=le_u->next) {
+                tua = (struct ua *) le_u->data;
+                le = tua->calls.tail;
+                while (le) {
+                    struct call *old_call = le->data;
+                    struct le *old_le = le;
+                    le = le->prev;
+                    if (old_call != call) {
+                        list_unlink(old_le);
+                        ua_hangup(ua, old_call, 486, "Another call incoming");
+                    }
+                }
+            }
+        }
+    }
 }
 
 

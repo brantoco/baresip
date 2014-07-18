@@ -366,9 +366,9 @@ int stream_alloc(struct stream **sp, const struct config_avt *cfg,
 
 	s->pt_enc = -1;
 
-    rtp_hangup_timeout_alloc(s);
+	rtp_hangup_timeout_alloc(s);
 
-    list_append(call_streaml(call), &s->le, s);
+	list_append(call_streaml(call), &s->le, s);
 
  out:
 	if (err)

@@ -294,7 +294,7 @@ const struct sdp_format *sdp_media_format_cycle(struct sdp_media *m);
  */
 
 struct rtp_header;
-struct rtp_hangup_timeout;
+struct stream_activity_st;
 
 enum {STREAM_PRESZ = 4+12}; /* same as RTP_HEADER_SIZE */
 
@@ -328,7 +328,7 @@ struct stream {
 	stream_rtp_h *rtph;      /**< Stream RTP handler                    */
 	stream_rtcp_h *rtcph;    /**< Stream RTCP handler                   */
 	void *arg;               /**< Handler argument                      */
-    struct rtp_hangup_timeout * rkc;
+	struct stream_activity_st * sa; /**< Stream activity information    */
 };
 
 int  stream_alloc(struct stream **sp, const struct config_avt *cfg,

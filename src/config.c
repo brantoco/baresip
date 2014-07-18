@@ -66,8 +66,7 @@ static struct config core_config = {
 		true,
 		false,
 		{5, 10},
-        false,
-        0
+		false
 	},
 
 	/* Network */
@@ -216,9 +215,8 @@ int config_parse_conf(struct config *cfg, const struct conf *conf)
 	if (err) {
 		warning("config: configure parse error (%m)\n", err);
 	}
-    (void)conf_get_u32(conf, "rtp_hangup_timeout", &cfg->avt.rtp_hangup_timeout);
 
-    /* Network */
+	/* Network */
 	(void)conf_apply(conf, "dns_server", dns_server_handler, NULL);
 	(void)conf_get_str(conf, "net_interface",
 			   cfg->net.ifname, sizeof(cfg->net.ifname));

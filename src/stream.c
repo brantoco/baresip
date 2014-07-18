@@ -14,13 +14,6 @@ enum {
 	RTP_RECV_SIZE = 8192,
 };
 
-struct rtp_hangup_timeout {
-    struct stream *s;
-    struct tmr tmr;
-    bool flag;
-};
-
-static uint32_t	rtp_hangup_timeout=0;
 
 static inline int lostcalc(struct stream *s, uint16_t seq)
 {
@@ -95,9 +88,6 @@ static void stream_destructor(void *arg)
 	mem_deref(s->jbuf);
 	mem_deref(s->rtp);
 	mem_deref(s->cname);
-
-    if (s->rkc)
-        mem_deref(s->rkc);
 }
 
 
@@ -167,55 +157,8 @@ static void rtp_recv(const struct sa *src, const struct rtp_header *hdr,
 
 		s->rtph(hdr, mb, s->arg);
 	}
-
-    if (s->rkc)
-        s->rkc->flag = true;
 }
 
-static void rtp_hangup_timer_handler(void *arg)
-{
-    struct rtp_hangup_timeout *rkc = arg;
-
-    if (rkc->flag)
-        rkc->flag = false;
-    else {
-        /* kill the stream */
-        struct stream *s = rkc->s;
-        struct call *c = s->call;
-        info("\nRTP hangup timeout.\n");
-        call_hangup(c,0,"RTP timeout");
-        return;
-    }
-
-    tmr_start(&rkc->tmr, rtp_hangup_timeout * 1000, rtp_hangup_timer_handler, rkc);
-}
-
-static void rtp_hangup_timeout_destructor(void *arg)
-{
-    struct rtp_hangup_timeout *rkc = arg;
-    tmr_cancel(&rkc->tmr);
-}
-
-static void rtp_hangup_timeout_alloc(struct stream *s)
-{
-    struct rtp_hangup_timeout *rkc;
-    struct config *cfg;
-
-    s->rkc = 0;
-    cfg = conf_config();
-    if (!cfg)
-        return;
-
-    if (cfg->avt.rtp_hangup_timeout>0) {
-        rkc = mem_zalloc(sizeof(*rkc), rtp_hangup_timeout_destructor);
-        if (!rkc)
-            return;
-        rkc->s = s;
-        s->rkc = rkc;
-        rtp_hangup_timeout = cfg->avt.rtp_hangup_timeout;
-        tmr_start(&rkc->tmr, rtp_hangup_timeout * 1000, rtp_hangup_timer_handler, rkc);
-    }
-}
 
 static void rtcp_handler(const struct sa *src, struct rtcp_msg *msg, void *arg)
 {
@@ -367,9 +310,7 @@ int stream_alloc(struct stream **sp, const struct config_avt *cfg,
 
 	s->pt_enc = -1;
 
-    rtp_hangup_timeout_alloc(s);
-
-    list_append(call_streaml(call), &s->le, s);
+	list_append(call_streaml(call), &s->le, s);
 
  out:
 	if (err)

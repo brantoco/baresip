@@ -846,6 +846,12 @@ void  video_encoder_cycle(struct video *video);
 int   video_debug(struct re_printf *pf, const struct video *v);
 
 
+struct rtcp_stats cur_stats;
+struct rtcp_stats final_stats;
+
+uint8_t lost_fraction_rx(struct rtcp_stats *rs);
+uint8_t lost_fraction_tx(struct rtcp_stats *rs);
+
 /*
  * Media NAT
  */

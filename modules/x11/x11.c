@@ -16,7 +16,6 @@
 #include <rem.h>
 #include <baresip.h>
 
-
 struct vidisp_st {
 	struct vidisp *vd;              /**< Inheritance (1st)     */
 	struct vidsz size;              /**< Current size          */
@@ -38,6 +37,8 @@ static struct {
 	int shm_error;
 	int (*errorh) (Display *, XErrorEvent *);
 } x11;
+
+static bool     flag_show_quality;
 
 
 /* NOTE: Global handler */
@@ -255,6 +256,53 @@ static int alloc(struct vidisp_st **stp, struct vidisp *vd,
 }
 
 
+static void show_indicator(struct vidisp_st *st,const struct vidframe *frame)
+{
+    //XColor xcolour_green, xcolour_red, xcolour_yellow;
+    XColor xcolour;
+    Colormap thecolormap;
+    int screen,n,w;
+    int maxbar;
+    uint8_t lost_frac;
+
+    if (!flag_show_quality) return;
+
+    lost_frac = lost_fraction_rx(NULL);
+
+    maxbar  = 16*(256-lost_frac)/256;
+
+    screen = DefaultScreen(st->disp);
+    thecolormap = XDefaultColormap(st->disp,screen);
+
+    if (maxbar<=8) {
+        xcolour.red = 40000; xcolour.green = 10000; xcolour.blue = 10000;
+    }
+    else if (maxbar<=12) {
+        xcolour.red = 40000; xcolour.green = 40000; xcolour.blue = 10000;
+    }
+    else {
+        xcolour.red = 10000; xcolour.green = 40000; xcolour.blue = 10000;
+    }
+    xcolour.flags = DoRed | DoGreen | DoBlue;
+    XAllocColor(st->disp, thecolormap, &xcolour);
+
+    XSetFillStyle(st->disp, st->gc, FillSolid);
+    XSetForeground(st->disp, st->gc, xcolour.pixel);
+
+    w = frame->size.w/32;
+
+    for (n=0;n<16 && n<maxbar;n++)
+        XFillRectangle(st->disp,st->win, st->gc,
+                       frame->size.w/4 + n*w,
+                       frame->size.h*3/4,
+                       w-2, frame->size.h/16);
+
+    XDrawRectangle(st->disp, st->win, st->gc,
+                   frame->size.w/4-2,
+                   frame->size.h*3/4-2,
+                   frame->size.w/2+2, frame->size.h/16+4);
+}
+
 static int display(struct vidisp_st *st, const char *title,
 		   const struct vidframe *frame)
 {
@@ -269,6 +317,10 @@ static int display(struct vidisp_st *st, const char *title,
 			     st->size.w, st->size.h,
 			     frame->size.w, frame->size.h);
 		}
+        else {
+            info("\nx11: reset: NULL  --->  %u x %u\n\n",
+                 frame->size.w, frame->size.h);
+        }
 
 		if (st->internal && !st->win)
 			err = create_window(st, &frame->size);
@@ -304,7 +356,10 @@ static int display(struct vidisp_st *st, const char *title,
 		XPutImage(st->disp, st->win, st->gc, st->image,
 			  0, 0, 0, 0, st->size.w, st->size.h);
 
-	XSync(st->disp, false);
+    /* quality display */
+    show_indicator(st,frame);
+
+    XSync(st->disp, false);
 
 	return err;
 }
@@ -320,19 +375,41 @@ static void hide(struct vidisp_st *st)
 }
 
 
+static int do_postprocess(struct re_printf *pf, void *arg)
+{
+
+    (void) arg;
+    (void) pf;
+    /* key pressed */
+    flag_show_quality = !flag_show_quality;
+    if (flag_show_quality)
+        info("Quality indicator mode on\n");
+    else
+        info("Quality indicator mode off\n");
+    return 0;
+}
+
+static const struct cmd cmdv[] = {
+    {'f', 0, "Show/hide stream quality indicator.", do_postprocess },
+};
+
 static int module_init(void)
 {
-	return vidisp_register(&vid, "x11", alloc, NULL, display, hide);
+    int err;
+    flag_show_quality = true;
+    err = cmd_register(cmdv, ARRAY_SIZE(cmdv));
+    err |= vidisp_register(&vid, "x11", alloc, NULL, display, hide);
+    return err;
 }
 
 
 static int module_close(void)
 {
 	vid = mem_deref(vid);
+    cmd_unregister(cmdv);
 
 	return 0;
 }
-
 
 EXPORT_SYM const struct mod_export DECL_EXPORTS(x11) = {
 	"x11",

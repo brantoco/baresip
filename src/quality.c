@@ -499,9 +499,12 @@ void quality_display_on_stream_destructor(struct stream *s)
     if (s->cfg.rtp_stats) {
         collect_rtp_stats(s,&final_stats);
         stream_rtcp_info(s);
+        info("!!!\n");
+        /*
         if (list_count(call_streaml(s->call)) == 1) {
+            info("!!!!\n");
             rtcp_info(&cur_stats);
-            /* show_stat_queue(); */
+            // show_stat_queue();
             if (msg_q) {
                 mem_deref(msg_q);
                 msg_q = 0;
@@ -509,6 +512,7 @@ void quality_display_on_stream_destructor(struct stream *s)
             msg_q_tx_p = 0;
             msg_q_rx_p = 0;
         }
+		*/
     }
 }
 

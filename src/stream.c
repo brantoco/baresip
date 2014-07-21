@@ -81,8 +81,7 @@ static void stream_destructor(void *arg)
 {
 	struct stream *s = arg;
 
-	if (s->cfg.rtp_stats)
-		print_rtp_stats(s);
+    quality_display_on_stream_destructor(s);
 
 	metric_reset(&s->metric_tx);
 	metric_reset(&s->metric_rx);

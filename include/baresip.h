@@ -171,6 +171,7 @@ struct config {
 		unsigned width, height; /**< Video resolution               */
 		uint32_t bitrate;       /**< Encoder bitrate in [bit/s]     */
 		uint32_t fps;           /**< Video framerate                */
+		bool adaptivesz;
 	} video;
 
 #ifndef TARGET_BRANTO_BALL

@@ -55,6 +55,7 @@ static struct config core_config = {
 		320, 240,
 		512000,
 		25,
+		false,
 	},
 #endif
 
@@ -67,7 +68,7 @@ static struct config core_config = {
 		false,
 		{5, 10},
 		false,
-		0
+		0,
 	},
 
 	/* Network */
@@ -194,6 +195,7 @@ int config_parse_conf(struct config *cfg, const struct conf *conf)
 	}
 	(void)conf_get_u32(conf, "video_bitrate", &cfg->video.bitrate);
 	(void)conf_get_u32(conf, "video_fps", &cfg->video.fps);
+	(void)conf_get_bool(conf, "video_adaptive_sz", &cfg->video.adaptivesz);
 #else
 	(void)size;
 #endif

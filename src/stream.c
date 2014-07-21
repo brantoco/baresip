@@ -8,6 +8,7 @@
 #include <re.h>
 #include <baresip.h>
 #include "core.h"
+#include "quality.h"
 
 
 enum {
@@ -142,7 +143,11 @@ static void rtp_recv(const struct sa *src, const struct rtp_header *hdr,
 			     sdp_media_name(s->sdp), mb->end,
 			     src, err);
 			s->metric_rx.n_err++;
-		}
+            rtcp_store_stat_rx();
+        }
+        else
+            if (check_time_rx())
+                rtcp_store_stat_rx();
 
 		if (jbuf_get(s->jbuf, &hdr2, &mb2)) {
 
@@ -429,9 +434,14 @@ int stream_send(struct stream *s, bool marker, int pt, uint32_t ts,
 	if (pt >= 0) {
 		err = rtp_send(s->rtp, sdp_media_raddr(s->sdp),
 			       marker, pt, ts, mb);
-		if (err)
+		if (err) {
 			s->metric_tx.n_err++;
-	}
+			rtcp_store_stat_tx();
+		}
+		else
+			if (check_time_tx())
+				rtcp_store_stat_tx();
+		}
 
 	rtpkeep_refresh(s->rtpkeep, ts);
 

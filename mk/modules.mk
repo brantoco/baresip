@@ -163,7 +163,7 @@ HAVE_LIBV4L2 := $(shell [ -f $(SYSROOT)/include/libv4l2.h ] || \
 	[ -f $(SYSROOT)/local/include/libv4l2.h ] || \
 	[ -f $(SDK_PATH)/$(TARGET_SYS)/usr/include/libv4l2.h ] \
 	&& echo "yes")
-USE_V4L2 := $(shell [ -f $(SYSROOT)/inc/lude/linux/videodev2.h ] || \
+USE_V4L2 := $(shell [ -f $(SYSROOT)/include/linux/videodev2.h ] || \
 	[ -f $(SYSROOT)/local/include/linux/videodev2.h ] || \
 	[ -f $(SYSROOT)/include/sys/videoio.h ] \
 	&& echo "yes")

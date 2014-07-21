@@ -31,6 +31,7 @@ SRCS	+= sipreq.c
 SRCS	+= stream.c
 SRCS	+= ua.c
 SRCS	+= ui.c
+SRCS	+= quality.c
 
 ifneq ($(USE_VIDEO),)
 SRCS	+= bfcp.c
